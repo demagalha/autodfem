@@ -53,7 +53,7 @@ $$
 \qquad \text{on the left, right, and bottom edges}
 $$
 
-To remove the pressure null space, one pressure degree of freedom is fixed (otherwise pressure is constant up still a constant)
+To remove the pressure null space, one pressure degree of freedom is fixed (otherwise pressure is determined up to a constant)
 
 $$
 p(0,0)=0.
@@ -68,6 +68,8 @@ We seek $(\mathbf{u}, p) \in V \times Q$ such that $\mathbf{u}$ satisfies the Di
 Let the test functions be:
 - $\mathbf{v} \in V$
 - $q \in Q$
+
+After multiplying by test functions and integrating the viscous term by parts, the weak formulation becomes
 
 ---
 
@@ -91,8 +93,7 @@ $$
 
 for all $q \in Q$.
 
-It really isn't clear what our (V,Q) spaces should be. We know, from theory, that this problem is a saddle point problem and it should respect the inf-sup condition.
-A stable pair is the Taylor-Hood element, which is employed here.
+The choice of (V,Q) is  not arbitrary. We know from theory that this is a saddle-point problem; therefore, the velocity and pressure spaces must satisfy the Ladyzhenskaya–Babuska–Brezzi (inf-sup) condition. A standard stable choice is the Taylor–Hood element pair, which is employed here.
 
 ---
 
@@ -149,7 +150,7 @@ V_p = FunctionSpace(mesh, Quad4(), n_components=1)
 Now, since our problem is a mixed problem, ie, we are solving for more than 1 unknown, we must put them together
 
 ```python
-# For a Mixed Space this is the usual way we'll pass things
+# For a Mixed Space this is the usual way we'll combine things
 V = MixedFunctionSpace([V_u, V_p])
 ```
 
@@ -230,7 +231,7 @@ def apply_bcs(R, K, U):
     for bc in [bc_top_x, bc_top_y, bc_zero_x, bc_zero_y]:
         R, K = bc.apply(R, K, U, offset=offset_u)
 
-    # pressure fix (otherwise it is defined only up still a constant)
+    # pressure fix (otherwise it is defined only up to a constant)
     bc_p = DirichletBC(V_p, value=0.0, boundary_marker_func=lambda x,y: abs(x)<1e-6 and abs(y)<1e-6)
     R, K = bc_p.apply(R, K, U, offset=offset_p)
 
