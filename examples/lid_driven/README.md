@@ -23,19 +23,12 @@ The strong form:
 The **non-dimensional, steady incompressible Navier–Stokes equations**.
 
 $$
-(\mathbf{u}\cdot\nabla)\mathbf{u}
-=
--\nabla p
-+
-\frac{1}{Re}\Delta\mathbf{u}
+(\mathbf{u}\cdot\nabla)\mathbf{u} = -\nabla p + \frac{1}{Re}\Delta\mathbf{u}
 \qquad \text{in } \Omega
 $$
 
 $$
-\nabla\cdot\mathbf{u}
-=
-0
-\qquad \text{in } \Omega
+\nabla\cdot\mathbf{u} = 0 \qquad \text{in } \Omega
 $$
 
 where
@@ -337,10 +330,6 @@ err = u_sim - ghia
 eps = 1e-12
 percent_error = 100.0 * err / (np.abs(ghia) + eps)
 ```
-
-
-
-
 
 ```
 L2 relative error: 0.5730383580088722 %
