@@ -4,7 +4,6 @@ A little FEM framework I've built for learning mostly.
 
 As I was studying on how automatic differentiation works, I came across the way to do it with Dual Numbers... And so I tried to come up with something to apply it... Why not the Jacobian in Newton's Method. And so I began writing it from what I knew already (and didn't).
 
----
 
 ## Disclaimer
 
@@ -15,13 +14,11 @@ Most of it is **HIGHLY unoptimized Python code**, although NumPy helps a ton (an
 
 AD is a big help because you don't have to define the tangent stiffness matrix at all... but adds overhead and worsens the time needed to assemble the system.
 
----
 
 ## Scope
 
 For now, it only supports **quadrilaterals** (although adding simplex should not be too much of an issue).
 
----
 
 ## Boundary conditions & assumptions
 
@@ -32,8 +29,6 @@ For applying boundary conditions, what is used is a **boundary marker function**
 One thing I might do in the future is to actually use markers directly exported from Gmsh to identify the boundaries.
 
 There is a somewhat fragile Gmsh support, but also mesh factory functions for structured meshes.
-
----
 
 ## Naming issues and confusion
 
@@ -46,8 +41,6 @@ It became an issue later when refactoring to add other types of elements, where 
 In the element class (and others) there is naming like `n_nodes`... which actually is supposed to mean `n_dofs`.
 
 I did not change it because most of the code depended on it, so this “double-thinking” is still useful in many places.
-
----
 
 ## Using it
 
@@ -105,7 +98,6 @@ There is also a workaround for linear problems in linear form.
 
 Even when using Newton, linear problems should converge in **1 iteration** if everything is correct.
 
----
 
 ## Post-processing
 
@@ -122,8 +114,6 @@ There are also helper functions for:
 - extrapolation
 - stress recovery
 - postprocessing utilities
-
----
 
 # To do
 If I find time:
