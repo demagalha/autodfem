@@ -10,7 +10,7 @@ from fem_engine.postprocess import export_vtu
 
 def deform_mesh(mesh, L, W, n_x, n_y):
     """
-    Applies a deterministic sinusoidal perturbation to internal mesh nodes 
+    Applies a sinusoidal perturbation to internal mesh nodes 
     to create skewed quadrilaterals.
     """
     hx = L / n_x
@@ -21,7 +21,7 @@ def deform_mesh(mesh, L, W, n_x, n_y):
         x, y = pt
         # Only perturb internal nodes (leave boundary nodes alone)
         if (x > 1e-6 and x < L - 1e-6) and (y > 1e-6 and y < W - 1e-6):
-            # Deterministic shift so the test is highly repeatable
+            # Shift
             dx = amplitude * hx * np.sin(2 * np.pi * x / L) * np.cos(2 * np.pi * y / W)
             dy = amplitude * hy * np.cos(2 * np.pi * x / L) * np.sin(2 * np.pi * y / W)
             

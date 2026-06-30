@@ -1,3 +1,101 @@
+# <Problem Name>
+
+## Eliptic membrane
+
+We will solve the elipic membrane problem within plane stress
+ hole under constant in-plane tension
+
+The problem definition is: 
+
+![Problem Definition](problem_definition.png)
+
+Due to the problem symmetry we will only model a quarter of it.
+
+The outer edge is defined by
+
+$$
+\left(\frac{X}{3.25}\right)^{2} + \left(\frac{Y}{2.75}\right)^{2} = 1
+$$
+
+And the inner:
+
+$$
+\left(\frac{X}{2}\right)^{2} + \left(\frac{Y}{1}\right)^{2} = 1
+$$
+
+Dimensions in meters
+
+---
+
+## Governing equations
+
+The strong form:
+
+$$
+-\nabla \cdot \sigma(u) = f \quad \text{in } \Omega
+$$
+
+$$
+u = g \quad \text{on } \Gamma_D
+$$
+
+$$
+\sigma n = t \quad \text{on } \Gamma_N
+$$
+
+With
+
+$$
+\epsilon(u) = \frac{1}{2} (\nabla u + (\nabla u)^T)
+$$
+
+and with
+
+$$
+\sigma(u) = \lambda \ tr(\epsilon(u))I + 2 \mu \epsilon(u)
+$$
+
+tr being the trace operator of a tensor, I the identity
+
+---
+
+##  Weak formulation
+
+After multiplying by a test function and integrating by parts:
+
+$$
+\int_\Omega  \sigma : \nabla v \, d \Omega = \int_\Omega f \cdot v \ d \Omega + \int_{\Gamma_N} t \ d \Gamma
+$$
+
+This formulation is the same as the more usual one:
+
+$$
+\int_\Omega  \sigma : \epsilon(v) \, d \Omega = \int_\Omega f \cdot v \ d \Omega + \int_{\Gamma_N} t \ d \Gamma
+$$
+
+---
+
+## Discretization
+
+- Mesh type: unstructured
+- Element: Quad4
+- Function space:
+  - $V_h \subset H^1$
+
+Approximation:
+
+$$
+u_h = \sum_i U_i \phi_i
+$$
+
+---
+
+## Implementation details
+The full file implemenation will be on [example_kirsch_plate.py](./example_kirsch_plate.py)
+
+
+We begin our file with the needed imports:
+```python
 import numpy as np
 import gmsh
 import os
@@ -11,8 +109,11 @@ from fem_engine.assembler import Assembler
 from fem_engine.fem_solver import solve_linear
 from fem_engine.element import Quad9
 from fem_engine.postprocess import export_vtu, average_at_nodes, evaluate_field_at_point
+```
 
-# 1. Physics & Geometry Parameters (NAFEMS LE1)
+We begin by defining the parameters of our problem
+
+```python
 E = 2.1e11 # 210 GPa
 nu = 0.3 # Poisson's ratio
 P_ext = 10.0e6 # 10 MPa outward normal pressure
@@ -24,8 +125,11 @@ mu = E / (2 * (1 + nu))
 # Geometry
 a_out, b_out = 3.25, 2.75
 a_in, b_in = 2.0, 1.0
+```
 
-# 2. Constitutive Models & Tractions
+We define our weak form
+
+```python
 def linear_elasticity(N, B_x, u_gp, grad_u, x_gp, e):
     """Plane stress linear elasticity weak form."""
     eps = 0.5 * (grad_u + grad_u.T)
@@ -38,13 +142,21 @@ def linear_elasticity(N, B_x, u_gp, grad_u, x_gp, e):
     sigma[1,0] = 2 * mu * eps[1,0]
     
     return B_x.T @ sigma
+```
 
+And a helper function to plot the $\sigma_{yy}$ later. Our reference solution is 92.7 MPa
+
+```python
 def compute_sigma_yy(u_gp, grad_u):
     """Recovers the y-component of Cauchy stress"""
     eps = 0.5 * (grad_u + grad_u.T)
     tr_eps = eps[0,0] + eps[1,1]
     return lambda_ * tr_eps + 2 * mu * eps[1,1]
+```
 
+And a helper function for the traction
+
+```python
 def outer_traction(x, y):
     """Calculates the outward normal vector on the ellipse and applies 10 MPa pressure."""
     # Gradient of the ellipse equation F(x,y) = (x/a)^2 + (y/b)^2
@@ -52,8 +164,11 @@ def outer_traction(x, y):
     Ny = 2.0 * y / (b_out**2)
     norm = np.sqrt(Nx**2 + Ny**2) + 1e-15
     return [P_ext * (Nx / norm), P_ext * (Ny / norm)]
+```
 
-# 3. Mesh Generation
+We then setup a function to generate our mesh, quadratic mesh
+
+```python
 def generate_quarter_elliptic_membrane(filename, lc):
     gmsh.initialize()
     gmsh.option.setNumber("General.Terminal", 0)
@@ -92,13 +207,12 @@ def generate_quarter_elliptic_membrane(filename, lc):
     
     gmsh.write(filename)
     gmsh.finalize()
+```
 
-# 4. Main & Convergence Loop
-if __name__ == "__main__":
-    os.makedirs("results", exist_ok=True)
-    
-    # Mesh characteristic lengths for the convergence study
-    mesh_sizes = [1.0, 0.8, 0.6, 0.4, 0.2, 0.1, 0.05]
+Now onto our main: We'll compare our results to multiple mesh resolutions to see the convergence, and we'll solve linearly
+
+```python
+mesh_sizes = [1.0, 0.8, 0.6, 0.4, 0.2, 0.1, 0.05]
     
     dofs_list = []
     stress_list = []
@@ -149,51 +263,37 @@ if __name__ == "__main__":
         U_final = solve_linear(K_global, -R_global)
         
         print(f"Solve completed in {time.time() - start_time:.3f} seconds.")
-        
-        # Stress Recovery
-        V_stress, U_stress = average_at_nodes(V, U_final, compute_sigma_yy, n_components=1)
-        
-        # Make the evaluation point slightly into the mesh domain (+X, +Y), we are actually solving an non linear problem (from physical to reference coords...)
-        point_D = np.array([a_in + 1e-6, 1e-6])
-        
-        sigma_yy_D = evaluate_field_at_point(mesh, V_stress, U_stress, point_D)
-        val = sigma_yy_D[0] if isinstance(sigma_yy_D, (list, np.ndarray)) else sigma_yy_D # numpy broadcasting hell
-        
-        # Log data for plotting
-        dofs_list.append(V.ndofs)
-        stress_list.append(val)
-        
-        print(f"DOFs: {V.ndofs} | Computed Tangential Stress at D: {val / 1e6:.2f} MPa")
-        
-        # Export the finest mesh
-        if lc == mesh_sizes[-1]:
-            export_vtu(V, U_final, "results/nafems_le1_disp.vtu", field_name="Displacement")
-            export_vtu(V_stress, U_stress, "results/nafems_le1_sigmayy.vtu", field_name="Sigma_yy")
+```
 
-    # 5. Convergence Plotting
-    print("\nGenerating Convergence Plot...")
-    
-    # Convert lists to arrays and stress to MPa
-    dofs_array = np.array(dofs_list)
-    stress_mpa = np.array(stress_list) / 1e6
-    target_mpa = target_stress / 1e6
+The rest of the file is most post processing, we export the result of the finest mesh and also check the convergence under the mesh refinement.
 
-    plt.figure(figsize=(9, 6))
-    
-    # Plot FEM convergence curve
-    plt.plot(dofs_array, stress_mpa, marker='o', linestyle='-', color='b', linewidth=2, label='FEM (Quad9) Tangential Stress')
-    
-    # Plot target analytical solution
-    plt.axhline(y=target_mpa, color='r', linestyle='--', linewidth=2, label=f'Target Reference ({target_mpa:.1f} MPa)')
-    
-    plt.title('NAFEMS LE1: Elliptic Membrane Stress Convergence', fontsize=14, fontweight='bold')
-    plt.xlabel('Degrees of Freedom (DOFs)', fontsize=12)
-    plt.ylabel(r'Tangential Edge Stress at Point D, $\sigma_{yy}$ [MPa]', fontsize=12)
-    plt.xscale('log') 
-    plt.grid(True, which="both", ls=":", alpha=0.7)
-    plt.legend(fontsize=12)
-    plt.tight_layout()
-    
-    plt.savefig('results/nafems_le1_convergence_quad9.png', dpi=300)
-    print("Benchmark complete. Plot saved to 'results/nafems_le1_convergence_quad9.png'.")
-    plt.show()
+```python
+# Stress Recovery
+V_stress, U_stress = average_at_nodes(V, U_final, compute_sigma_yy, n_components=1)
+
+# Make the evaluation point slightly into the mesh domain (+X, +Y), we are actually solving an non linear problem (from physical to reference coords...)
+point_D = np.array([a_in + 1e-6, 1e-6])
+
+sigma_yy_D = evaluate_field_at_point(mesh, V_stress, U_stress, point_D)
+val = sigma_yy_D[0] if isinstance(sigma_yy_D, (list, np.ndarray)) else sigma_yy_D # numpy broadcasting hell
+
+# Log data for plotting
+dofs_list.append(V.ndofs)
+stress_list.append(val)
+
+print(f"DOFs: {V.ndofs} | Computed Tangential Stress at D: {val / 1e6:.2f} MPa")
+
+# Export the finest mesh
+if lc == mesh_sizes[-1]:
+    export_vtu(V, U_final, "results/nafems_le1_disp.vtu", field_name="Displacement")
+    export_vtu(V_stress, U_stress, "results/nafems_le1_sigmayy.vtu", field_name="Sigma_yy")
+```
+
+With Quadratic Lagrange Quads we get:
+
+![Simulation result](eliptic_membrane_result.png)
+
+
+![convergence_quad9](nafems_le1_convergence_quad9.png)
+
+

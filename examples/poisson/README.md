@@ -33,13 +33,13 @@ $$
 After multiplying by a test function and integrating by parts:
 
 $$
-\int_\Omega  \nabla u \cdot \nabla v \, dx = \int_\Omega f v \, dx
+\int_\Omega  \nabla u \cdot \nabla v \, d \Omega = \int_\Omega f v \, d \Omega
 $$
 
 We denote the $L^2(\Omega)$ inner product by:
 
 $$
-(u, v) := \int_\Omega u \cdot v \, dx
+(u, v) := \int_\Omega u \cdot v \, d \Omega
 $$
 
 So the weak formulation becomes: find $u \in V_h \subset H^1(\Omega)$ such that

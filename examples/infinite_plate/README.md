@@ -51,13 +51,13 @@ tr being the trace operator of a tensor, I the identity
 After multiplying by a test function and integrating by parts:
 
 $$
-\int_\Omega  \sigma : \nabla v \, dx = \int_\Omega f \cdot v \ + \int_{\Gamma_N} t \ ds
+\int_\Omega  \sigma : \nabla v \, d\Omega = \int_\Omega f \cdot v \ d\Omega \ + \int_{\Gamma_N} t \ d \Gamma
 $$
 
 This formulation is the same as the more usual one:
 
 $$
-\int_\Omega  \sigma : \epsilon(v) \, dx = \int_\Omega f \cdot v \ + \int_{\Gamma_N} t \ ds
+\int_\Omega  \sigma : \epsilon(v) \, d\Omega  = \int_\Omega f \cdot v \ d\Omega  + \int_{\Gamma_N} t \ d \Gamma
 $$
 
 ---

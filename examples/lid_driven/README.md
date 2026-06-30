@@ -1,3 +1,132 @@
+# <Problem Name>
+
+## Lid Driven Cavity
+
+We will solve the famous lid driven cavity problem:
+
+The problem definition is: 
+
+![Problem Definition](problem_definition.png)
+
+The characteristic velocity is
+
+$$
+U = 1.
+$$
+
+---
+
+## Governing equations
+
+The strong form:
+
+The **non-dimensional, steady incompressible Navier–Stokes equations**.
+
+$$
+(\mathbf{u}\cdot\nabla)\mathbf{u}
+=
+-\nabla p
++
+\frac{1}{Re}\Delta\mathbf{u}
+\qquad \text{in } \Omega
+$$
+
+$$
+\nabla\cdot\mathbf{u}
+=
+0
+\qquad \text{in } \Omega
+$$
+
+where
+
+$$
+Re = 100.
+$$
+
+### Boundary Conditions
+
+Moving lid:
+
+$$
+\mathbf{u}=(1,0)
+\qquad \text{on the top edge}
+$$
+
+No-slip walls:
+
+$$
+\mathbf{u}=(0,0)
+\qquad \text{on the left, right, and bottom edges}
+$$
+
+To remove the pressure null space, one pressure degree of freedom is fixed (otherwise pressure is constant up still a constant)
+
+$$
+p(0,0)=0.
+$$
+
+---
+
+##  Weak formulation
+
+We seek $(\mathbf{u}, p) \in V \times Q$ such that $\mathbf{u}$ satisfies the Dirichlet boundary conditions
+
+Let the test functions be:
+- $\mathbf{v} \in V$
+- $q \in Q$
+
+---
+
+### Weak Form
+
+Find $(\mathbf{u}, p)$ such that:
+
+$$
+\frac{1}{Re} \int_\Omega \nabla \mathbf{u} : \nabla \mathbf{v}\, d\Omega
++ \int_\Omega (\mathbf{u} \cdot \nabla)\mathbf{u} \cdot \mathbf{v}\, d\Omega
+- \int_\Omega p (\nabla \cdot \mathbf{v})\, d\Omega
+= 0
+$$
+
+for all $\mathbf{v} \in V$, and
+
+$$
+\int_\Omega q (\nabla \cdot \mathbf{u})\, d\Omega
+= 0
+$$
+
+for all $q \in Q$.
+
+It really isn't clear what our (V,Q) spaces should be. We know, from theory, that this problem is a saddle point problem and it should respect the inf-sup condition.
+A stable pair is the Taylor-Hood element, which is employed here.
+
+---
+
+## Discretization
+
+
+- Mesh type: structured quadrilateral mesh of the unit square $\Omega = (0,1)\times(0,1)$
+- Element type:
+  - Velocity: Q2 (biquadratic quadrilateral)
+  - Pressure: Q1 (bilinear quadrilateral)
+  - Taylor–Hood mixed element pair
+
+- Function spaces:
+  - $\mathbf{V}_h \subset [H^1(\Omega)]^2$ (velocity space)
+  - $Q_h \subset L^2(\Omega)$ (pressure space)
+
+- Mixed space:
+$$(\mathbf{u}_h, p_h) \in \mathbf{V}_h \times Q_h$$
+
+---
+
+## Implementation details
+The full file implementation will be on [example_lid_driven_cavity.py](./example_lid_driven_cavity.py)
+
+
+We begin our file with the needed imports:
+```python
 import numpy as np
 
 from fem_engine.mesh import create_quadratic_rectangle_mesh, create_rectangle_mesh, FunctionSpace, MixedFunctionSpace
@@ -6,29 +135,36 @@ from fem_engine.assembler import MixedAssembler
 from fem_engine.bcs import DirichletBC
 from fem_engine.fem_solver import solve_newton_raphson
 from fem_engine.postprocess import export_vtu, evaluate_field_at_point
+```
 
-# 1. Mesh
+We define our mesh: (Note: it could be a Quad4 mesh as well...)
+
+```python
 L, W = 1.0, 1.0
 elements_x, elements_y = 20, 20  # Increased resolution
 
 mesh = create_quadratic_rectangle_mesh(L, W, n_x=elements_x, n_y=elements_y, x0=0.0, y0=0.0)
+```
 
-# We could just use this just as well, since mesh !=! element space...
-# The number of dofs in the assembled system is the same when, the mesh "only" helps with the geometric mapping
-#mesh = create_rectangle_mesh(L, W, n_x=elements_x, n_y=elements_y, x0=0.0, y0=0.0)
+We then define our Function Spaces
 
-
-# 2. Spaces (Q2/Q1 Taylor-Hood)
+```python
 V_u = FunctionSpace(mesh, Quad9(), n_components=2)  
-V_p = FunctionSpace(mesh, Quad4(), n_components=1)  
+V_p = FunctionSpace(mesh, Quad4(), n_components=1) 
+```
 
+Now, since our problem is a mixed problem, ie, we are solving for more than 1 unknown, we must put them together
+
+```python
 # For a Mixed Space this is the usual way we'll pass things
 V = MixedFunctionSpace([V_u, V_p])
+```
 
-# 3. Weak form
-# Instead of other examples, whe working with a mixed form we have multiple unknowns
-# If we'd have a third one we would use mapped[2]
-# The idea, though, is the same for earlier: we have access, in order, to the Basis Fun and first derivatives (if it makes sense), the field and its derivative 
+And we finally define our weak form. 
+
+**For Mixed Problems the arguments change a bit (but not really): mapped will be a list that in each dimension will recover what we have available (N, B, u, grad_u) for our fields to define the weak form**
+
+```python
 def navier_stokes_weak_form(mapped, gp, e):
     (N_u, B_u, u, grad_u) = mapped[0]
     (N_p, B_p, p, grad_p) = mapped[1]
@@ -67,10 +203,19 @@ def navier_stokes_weak_form(mapped, gp, e):
     R_p = -np.outer(N_p, [div_u])
 
     return [R_u, R_p]
+```
 
+We assemble it
+
+```python
 assembler = MixedAssembler(V, navier_stokes_weak_form, quad_degree=3)
+```
 
-# 4. Boundary conditions
+And we define our boundary conditions (we fixed one boundary dof for the pressure, otherwise we wouldn't be able to solve it)
+
+**Important: for mixed problems we must define an "offset" for the application of boundary conditions. That is, since our system is built by stacking the fields, for the second unknown we must "offset" it by the number of dofs of the previous field**
+
+```python
 def left_wall(x, y): return abs(x) < 1e-6
 def right_wall(x, y): return abs(x - L) < 1e-6
 def top_wall(x, y): return abs(y - W) < 1e-6
@@ -97,20 +242,19 @@ def apply_bcs(R, K, U):
     R, K = bc_p.apply(R, K, U, offset=offset_p)
 
     return R, K
+```
 
+We then solve the problem
 
-# 5. Solve
+```python
 U0 = np.zeros(V.ndofs)
 
 U_sol = solve_newton_raphson(U0, assembler.assemble, apply_bcs)
+```
 
-print("Solved Nav Stokes (Steady State)")
+Ghia et al. ([1982](#references)) gives us tabulated results for different Reynolds numbers, since we solve with Re=100.0 we will use the values related to it and plot the results through the geometric center of the cavity.
 
-import matplotlib.pyplot as plt
-
-# Post Processing
-
-# Split solution 
+```python
 U_u, U_p = V.split(U_sol)
 
 export_vtu(V_u, U_u, "results/velocity_cavity.vtu", field_name="Velocity", n_vis_pts=5)
@@ -175,7 +319,6 @@ for y in y_fine:
 u_fine = np.array(u_fine)
 
 plt.plot(ghia_u_100, ghia_y, 'ro', label="Ghia Re=100")
-#plt.plot(u_sim, ghia_y, 'b--', label="Solver")
 plt.plot(u_fine, y_fine, 'b-', label="Solver")
 
 plt.xlabel("u velocity")
@@ -183,7 +326,6 @@ plt.ylabel("y")
 plt.legend()
 plt.gca()
 plt.title("Lid-driven cavity comparison (Re=100)")
-plt.savefig('results/u_velocity_vertical_line.png', dpi=300)
 plt.show()
 
 
@@ -194,18 +336,24 @@ err = u_sim - ghia
 
 eps = 1e-12
 percent_error = 100.0 * err / (np.abs(ghia) + eps)
-
-print(percent_error)
-
-l2_rel = np.linalg.norm(u_sim - ghia) / np.linalg.norm(ghia)
-print("L2 relative error:", 100 * l2_rel, "%")
+```
 
 
-plt.figure()
-plt.plot(percent_error, ghia_y, 'k-o')
-plt.gca()
-plt.xlabel("Percent error (%)")
-plt.ylabel("y")
-plt.title("Ghia comparison error (Re=100)")
-plt.show()
 
+
+
+```
+L2 relative error: 0.5730383580088722 %
+```
+
+![Comparison result](u_velocity_vertical_line.png)
+
+
+![Velocity Result](velocity_quiver.png)
+
+## References
+
+1. Ghia, U., Ghia, K. N., & Shin, C. T. (1982).
+   *High-Re solutions for incompressible flow using the Navier-Stokes equations and a multigrid method.*
+   Journal of Computational Physics, 48(3), 387–411.
+   https://doi.org/10.1016/0021-9991(82)90058-4
