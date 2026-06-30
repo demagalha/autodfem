@@ -1,6 +1,6 @@
 # <Problem Name>
 
-## 📌 Poisson
+## Poisson
 
 As the most simple problem we can solve, we begin with the Poisson Equation.
 
@@ -18,7 +18,7 @@ $$
 The strong form:
 
 $$
-- \Delta u = f \quad \text{in } \Omega
+-\Delta u = f \quad \text{in } \Omega
 $$
 
 $$
