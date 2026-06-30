@@ -78,10 +78,7 @@ After multiplying by test functions and integrating the viscous term by parts, t
 Find $(\mathbf{u}, p)$ such that:
 
 $$
-\frac{1}{Re} \int_\Omega \nabla \mathbf{u} : \nabla \mathbf{v}\, d\Omega
-+ \int_\Omega (\mathbf{u} \cdot \nabla)\mathbf{u} \cdot \mathbf{v}\, d\Omega
-- \int_\Omega p (\nabla \cdot \mathbf{v})\, d\Omega
-= 0
+\frac{1}{Re} \int_\Omega \nabla \mathbf{u} : \nabla \mathbf{v}\, d\Omega + \int_\Omega (\mathbf{u} \cdot \nabla)\mathbf{u} \cdot \mathbf{v}\, d\Omega - \int_\Omega p (\nabla \cdot \mathbf{v})\, d\Omega = 0
 $$
 
 for all $\mathbf{v} \in V$, and
