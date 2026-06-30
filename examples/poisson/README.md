@@ -212,7 +212,7 @@ Which gives us
 L2 Norm Error: 4.889074e-04
 ```
 
-To export results to paraview, we can use the function ```export_vtu```. If we input the exact_func argument with an expression,it will export the value of the solution vector, U_final, minus it. That is, the error. n_vis_pts is an argument to have a more dense visualization mesh.
+To export results to paraview, we can use the function ```export_vtu```. If we input the exact_func argument with an expression, it will export the value of the solution vector, U_final, minus it. That is, the error. ```n_vis_pts``` is an argument to have a more dense visualization mesh.
 
 ```
 export_vtu(V, U_final, "results/poisson.vtu", field_name="Scalar Field")    
