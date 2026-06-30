@@ -261,17 +261,17 @@ U_final = solve_newton_raphson(np.zeros(V.ndofs), assembler_el.assemble, apply_b
 V_stress_node, U_stress_node = average_at_nodes(V, U_final, compute_sigma_xx, n_components=1)
 ```
 
-To compare it at the tip of our reference solution, there is a function called ```evaluate_field_at_point```, which will perform a few newton iterations to solve the problem: give x,y coordinates, evaluate the solution. This is an inverse problem, because we usually go from reference coordinates -> physical. For nodal FEM we can just locate the dofs at the physical points, but still.
+To compare it at the tip of our reference solution, there is a function called ```evaluate_field_at_point```, which will perform a few newton iterations to solve the problem: given x,y coordinates, evaluate the solution. This is an inverse problem, because we usually go from reference coordinates -> physical. For nodal FEM we can just locate the dofs at the physical points, but still.
 
 ```python
 sigma_xx_tip = evaluate_field_at_point(mesh, V_stress_node, U_stress_node, target_pt)
     
-    exact_tensor_tip = kirsch_stress_tensor(0.0, a, T_inf, a)
-    sigma_xx_analytical_tip = exact_tensor_tip[0, 0]
+exact_tensor_tip = kirsch_stress_tensor(0.0, a, T_inf, a)
+sigma_xx_analytical_tip = exact_tensor_tip[0, 0]
 
-    print(f"Applied Far-Field Kirsch Tensor : {T_inf:.2f}")
-    print(f"Peak Stress at Tip : {sigma_xx_tip[0]:.2f}")
-    print(f"Analytical sigma_xx at tip : {sigma_xx_analytical_tip:.6f}")
+print(f"Applied Far-Field Kirsch Tensor : {T_inf:.2f}")
+print(f"Peak Stress at Tip : {sigma_xx_tip[0]:.2f}")
+print(f"Analytical sigma_xx at tip : {sigma_xx_analytical_tip:.6f}")
 ```
 
 Which gives
