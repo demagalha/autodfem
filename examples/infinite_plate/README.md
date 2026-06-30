@@ -226,7 +226,7 @@ V = FunctionSpace(mesh, Quad4(), n_components=2)
 assembler_el = Assembler(V, linear_elasticity, quad_degree=2)
 ```
 
-Our tractions are applied through the exact solution provided
+Our tractions are applied through the exact solution provided. We also apply the Dirichlet boundary conditions.
 
 ```python
 def apply_bcs(R, K, U):
@@ -253,7 +253,7 @@ def apply_bcs(R, K, U):
         return R, K
 ```
 
-We then solve and export the values of the stress with the function ```average_at_nodes```, which will average the values of the stress at node so the visualization of it will be "nicer" and continuous (although it isn't really)
+We then solve and export the values of the stress with the function ```average_at_nodes```, which will average the values of the stress at nodes so the visualization of it will be "nicer" and continuous (although it isn't really)
 
 ```python
 U_final = solve_newton_raphson(np.zeros(V.ndofs), assembler_el.assemble, apply_bcs)
@@ -276,9 +276,11 @@ sigma_xx_tip = evaluate_field_at_point(mesh, V_stress_node, U_stress_node, targe
 
 Which gives
 
-```Applied Far-Field Kirsch Tensor : 10.00
+```
+Applied Far-Field Kirsch Tensor : 10.00
 Peak Stress at Tip : 30.06
-Analytical sigma_xx at tip : 30.000000```
+Analytical sigma_xx at tip : 30.000000
+```
 
 With the values of the stress calculated with the helper function, we can export it as a vtu file, alongside the displacements
 
