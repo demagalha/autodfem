@@ -1,3 +1,88 @@
+# <Problem Name>
+
+## Kirsch Infinite Plate
+
+We will solve a very known linear elasticity problem:
+
+The infinite plate with a circular hole under constant in-plane tension
+
+The problem definition is: 
+
+![Problem Definition](problem_definition.png)
+
+Due to the problem symmetry we will only model the top right corner of it.
+
+---
+
+## Governing equations
+
+The strong form:
+
+$$
+-\nabla \cdot \sigma(u) = f \quad \text{in } \Omega
+$$
+
+$$
+u = g \quad \text{on } \Gamma_D
+$$
+
+$$
+\sigma n = t \quad \text{on } \Gamma_N
+$$
+
+With
+
+$$
+\epsilon(u) = \frac{1}{2} (\nabla u + (\nabla u)^T)
+$$
+
+and with
+
+$$
+\sigma(u) = \lambda \ tr(\epsilon(u))I + 2 \mu \epsilon(u)
+$$
+
+tr being the trace operator of a tensor, I the identity
+
+---
+
+##  Weak formulation
+
+After multiplying by a test function and integrating by parts:
+
+$$
+\int_\Omega  \sigma : \nabla v \, dx = \int_\Omega f \cdot v \ + \int_{\Gamma_N} t \ ds
+$$
+
+This formulation is the same as the more usual one:
+
+$$
+\int_\Omega  \sigma : \epsilon(v) \, dx = \int_\Omega f \cdot v \ + \int_{\Gamma_N} t \ ds
+$$
+
+---
+
+## Discretization
+
+- Mesh type: unstructured
+- Element: Quad4
+- Function space:
+  - $V_h \subset H^1$
+
+Approximation:
+
+$$
+u_h = \sum_i U_i \phi_i
+$$
+
+---
+
+## Implementation details
+The full file implemenation will be on [example_kirsch_plate.py](./example_kirsch_plate.py)
+
+
+We begin our file with the needed imports:
+```python
 import numpy as np
 import gmsh
 import os
@@ -10,8 +95,13 @@ from fem_engine.assembler import Assembler
 from fem_engine.fem_solver import solve_newton_raphson
 from fem_engine.element import Quad4
 from fem_engine.postprocess import export_vtu, average_at_nodes, evaluate_field_at_point
+```
 
-# Physics & Geometry Parameters
+With the input traction, our reference solution will be $$\sigma_{xx} = 30.0  $$ at the tip of our plate.
+
+We begin by defining the parameters of our problem
+
+```python
 E = 1e5
 nu = 0.3
 lambda_ = E * nu / (1 - nu**2)
@@ -21,8 +111,11 @@ L = 4.0
 W = 4.0
 a = 1.0
 T_inf = 10.0 # Far-field load
+```
 
-# Analytical Kirsch Solutions (for Boundary Tractions)
+For the boundary traction applied, we'll make use of kirsch solutions [themselves](https://en.wikipedia.org/wiki/Kirsch_equations), (note we had to bring them to cartesian coordinates)
+
+```python
 def kirsch_stress_tensor(x, y, T, a):
     """Returns the exact analytical 2D Cauchy stress tensor at (x, y)."""
     r = np.sqrt(x**2 + y**2) + 1e-15
@@ -41,8 +134,11 @@ def kirsch_stress_tensor(x, y, T, a):
         [sig_x, tau_xy], 
         [tau_xy, sig_y]
     ])
+```
 
-# Traction functions for the boundaries
+Then we define the traction for the boundaries
+
+```python
 def traction_right_edge(x, y):
     """Traction on x=L boundary. Normal vector n = [1, 0]. T = Sigma * n"""
     sigma = kirsch_stress_tensor(x, y, T_inf, a)
@@ -52,8 +148,12 @@ def traction_top_edge(x, y):
     """Traction on y=W boundary. Normal vector n = [0, 1]. T = Sigma * n"""
     sigma = kirsch_stress_tensor(x, y, T_inf, a)
     return [sigma[0, 1], sigma[1, 1]]  # [tau_xy, sig_yy]
+```
 
-# Mesh Generation
+We now generate a mesh for our problem, a bilinear quad mesh:
+(It doesn't actually matter how gmsh generates it... as long as it gives a 4 node case for this case)
+
+```python
 def generate_quarter_plate_hole(filename, lc_far=0.4, lc_hole=0.015):
     gmsh.initialize()
     gmsh.option.setNumber("General.Terminal", 0)
@@ -83,8 +183,11 @@ def generate_quarter_plate_hole(filename, lc_far=0.4, lc_hole=0.015):
     gmsh.model.mesh.generate(2)
     gmsh.write(filename)
     gmsh.finalize()
+```
 
-# Weak Form
+We finally define our weak form
+
+```python
 def linear_elasticity(N, B_x, u_gp, grad_u, x_gp, e):
     eps = 0.5 * (grad_u + grad_u.T)
     tr_eps = eps[0,0] + eps[1,1]
@@ -96,24 +199,37 @@ def linear_elasticity(N, B_x, u_gp, grad_u, x_gp, e):
     sigma[1,0] = 2 * mu * eps[1,0]
     
     return B_x.T @ sigma
+```
 
+And a helper function to plot the $\sigma_{xx}$ later
+(we could generate all elements of our stress tensor... and export them as well)
+
+```python
 def compute_sigma_xx(u_gp, grad_u):
     eps = 0.5 * (grad_u + grad_u.T)
     tr_eps = eps[0,0] + eps[1,1]
     return lambda_ * tr_eps + 2 * mu * eps[0,0]
+```
 
-if __name__ == "__main__":
-    os.makedirs("results", exist_ok=True)
-    msh_file = "results/plate_hole_exact.msh"
-    
-    print("\n--- Generating Exact Traction Mesh (L=4.0) ---")
-    generate_quarter_plate_hole(msh_file)
-    mesh = import_mesh(msh_file, element_type="quad")
-    
-    V = FunctionSpace(mesh, Quad4(), n_components=2)
-    assembler_el = Assembler(V, linear_elasticity, quad_degree=2)
+Now onto the main part, we generate our mesh with the function we defined AND import it to our internal format with ```import_mesh```
 
-    def apply_bcs(R, K, U):
+```python
+msh_file = "results/plate_hole_exact.msh"
+generate_quarter_plate_hole(msh_file)
+mesh = import_mesh(msh_file, element_type="quad")
+```
+
+As usual, let's define the spaces and elements, and our assembler
+
+```python
+V = FunctionSpace(mesh, Quad4(), n_components=2)
+assembler_el = Assembler(V, linear_elasticity, quad_degree=2)
+```
+
+Our tractions are applied through the exact solution provided
+
+```python
+def apply_bcs(R, K, U):
         tol = 1e-5
         
         # Neumann BCs
@@ -135,15 +251,20 @@ if __name__ == "__main__":
             R, K = bc.apply(R, K, U)
             
         return R, K
+```
 
-    print("\n--- Solving Finite Plate with Exact Boundary Tractions ---")
-    start_time = time.time()
-    U_final = solve_newton_raphson(np.zeros(V.ndofs), assembler_el.assemble, apply_bcs)
-    print(f"Solve completed in {time.time() - start_time:.3f} seconds")
+We then solve and export the values of the stress with the function ```average_at_nodes```, which will average the values of the stress at node so the visualization of it will be "nicer" and continuous (although it isn't really)
 
-    V_stress_node, U_stress_node = average_at_nodes(V, U_final, compute_sigma_xx, n_components=1)
-    target_pt = np.array([0.0, a])
-    sigma_xx_tip = evaluate_field_at_point(mesh, V_stress_node, U_stress_node, target_pt)
+```python
+U_final = solve_newton_raphson(np.zeros(V.ndofs), assembler_el.assemble, apply_bcs)
+
+V_stress_node, U_stress_node = average_at_nodes(V, U_final, compute_sigma_xx, n_components=1)
+```
+
+To compare it at the tip of our reference solution, there is a function called ```evaluate_field_at_point```, which will perform a few newton iterations to solve the problem: give x,y coordinates, evaluate the solution. This is an inverse problem, because we usually go from reference coordinates -> physical. For nodal FEM we can just locate the dofs at the physical points, but still.
+
+```python
+sigma_xx_tip = evaluate_field_at_point(mesh, V_stress_node, U_stress_node, target_pt)
     
     exact_tensor_tip = kirsch_stress_tensor(0.0, a, T_inf, a)
     sigma_xx_analytical_tip = exact_tensor_tip[0, 0]
@@ -151,56 +272,23 @@ if __name__ == "__main__":
     print(f"Applied Far-Field Kirsch Tensor : {T_inf:.2f}")
     print(f"Peak Stress at Tip : {sigma_xx_tip[0]:.2f}")
     print(f"Analytical sigma_xx at tip : {sigma_xx_analytical_tip:.6f}")
+```
 
-    export_vtu(V, U_final, "results/plate_hole_disp.vtu", field_name="Displacement")
-    export_vtu(V_stress_node, U_stress_node, "results/plate_hole_sigmaxx.vtu", field_name="Sigma_xx")
+Which gives
 
-    # Plotting Stress along the vertical symmetry line (x = 0)
-    import matplotlib.pyplot as plt
+```Applied Far-Field Kirsch Tensor : 10.00
+Peak Stress at Tip : 30.06
+Analytical sigma_xx at tip : 30.000000```
 
-    print("Extracting data along the vertical symmetry line (x=0)")
-    
-    # 50 sample points from the hole edge (y=a) to the top boundary (y=W)
-    n_samples = 50
-    y_line = np.linspace(a, W, n_samples)
-    
-    sig_xx_fem = np.zeros(n_samples)
-    sig_xx_exact = np.zeros(n_samples)
+With the values of the stress calculated with the helper function, we can export it as a vtu file, alongside the displacements
 
-    for i, y_val in enumerate(y_line):
-        target_pt = np.array([0.0, y_val])
-        
-        # 1. Evaluate Numerical Stress
-        fem_val = evaluate_field_at_point(mesh, V_stress_node, U_stress_node, target_pt)
-        
-        # Handle whether the framework returns a float or a 1D array, fix this later...
-        sig_xx_fem[i] = fem_val[0] if isinstance(fem_val, (list, np.ndarray, tuple)) else fem_val
-        
-        # 2. Evaluate Analytical Stress
-        exact_tensor = kirsch_stress_tensor(0.0, y_val, T_inf, a)
-        sig_xx_exact[i] = exact_tensor[0, 0]
+```python
+export_vtu(V, U_final, "results/plate_hole_disp.vtu", field_name="Displacement")
+export_vtu(V_stress_node, U_stress_node, "results/plate_hole_sigmaxx.vtu", field_name="Sigma_xx")
+```
 
-    # Plotting
-    plt.figure(figsize=(8, 6))
-    
-    # Plot exact solution
-    plt.plot(y_line, sig_xx_exact, 'k-', linewidth=2.0, label='Exact Analytical (Kirsch)')
-    
-    # Plot FEM solution as discrete points
-    plt.plot(y_line, sig_xx_fem, 'ro', markersize=5, label='FEM (Quad4)')
-    
-    plt.title(r'Stress along Symmetry Line ($x=0$)', fontsize=14)
-    plt.xlabel('Distance from center, y', fontsize=12)
-    plt.ylabel(r'Horizontal Stress, $\sigma_{xx}$', fontsize=12)
-    
-    # Vertical dashed line for the hole boundary
-    plt.axvline(x=a, color='gray', linestyle='--', label='Hole Edge (y=a)')
-    
-    plt.grid(True, linestyle=':', alpha=0.7)
-    plt.legend(fontsize=12)
-    plt.tight_layout()
-    
-    # Save and show
-    plt.savefig('results/stress_decay_plot.png', dpi=300)
-    print("Plot saved to 'results/stress_plot.png'")
-    plt.show()
+
+![Simulation result](infinite_plate_result.png)
+
+
+![stress_decay_plot](stress_decay_plot.png)

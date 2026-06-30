@@ -66,7 +66,7 @@ $$
 ---
 
 ## Implementation details
-The full file implemenation will be on [example_poisson.py](./example_poisson.py)
+The full file implementation will be on [example_poisson.py](./example_poisson.py)
 
 
 We begin our file with the needed imports:
