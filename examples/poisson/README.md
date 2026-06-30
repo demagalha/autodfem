@@ -229,7 +229,7 @@ And for the error plot
 
 Even if our problem is linear, we solved it with Newton-Raphson. We could just as well solve it in a linear way, by building the stiffness matrix originating from $$(\nabla u, \nabla v)$$
 
-and the RHS from $$ (f, v)$$
+and the RHS from $$(f, v)$$
 
 [example_poisson_linear.py](./example_poisson_linear.py) uses, instead of Newton-Raphson, a linear solve. The trick is when applying boundary conditions:
 
