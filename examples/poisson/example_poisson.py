@@ -16,9 +16,6 @@ def u_exact(x, y):
 def f_source(x, y):
     return 2 * np.pi**2 * np.sin(np.pi * x) * np.sin(np.pi * y)
 
-def exact_solution(x, y):
-    return [u_exact(x, y)]
-
 # The Generic Weak Form Callback
 def poisson_weak_form(N, B_x, u_gp, grad_u, x_gp, e):
     """
