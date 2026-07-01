@@ -39,7 +39,7 @@ $$u = 0.0$$
 
 * **Top and Bottom Walls ($y = 0, y = W$):** Natural boundary conditions ($\nabla u \cdot \mathbf{n} = 0$).
 
-* For the initial condition, we set $u(x,y,0) = 0$ everywhere other than the boundaries where we have the boundary conditions
+* For the initial condition, we set $u(x,y,0) = 0$ in the interior of the domain, with the prescribed dirichlet boundary values imposed on the left and right boundaries.
 
 ---
 
