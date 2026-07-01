@@ -1,4 +1,4 @@
-# <Problem Name>
+# Poisson Equation: Verification via Method of Manufactured Solutions
 
 ## Poisson
 

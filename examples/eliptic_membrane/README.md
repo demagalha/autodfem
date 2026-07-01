@@ -1,9 +1,8 @@
-# <Problem Name>
+# Plane Stress Elasticity: NAFEMS LE1 Elliptic Membrane Benchmark
 
 ## Eliptic membrane
 
-We will solve the elipic membrane problem within plane stress
- hole under constant in-plane tension
+We will solve the elipic membrane problem within plane stress under constant in-plane tension
 
 The problem definition is: 
 
@@ -91,7 +90,7 @@ $$
 ---
 
 ## Implementation details
-The full file implemenation will be on [example_kirsch_plate.py](./example_kirsch_plate.py)
+The full file implemenation will be on [example_eliptic_membrane_quadratic.py](./example_eliptic_membrane_quadratic.py)
 
 
 We begin our file with the needed imports:

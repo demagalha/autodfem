@@ -114,11 +114,14 @@ class DirichletBC:
                         normal = np.array([phys_t[1], -phys_t[0]]) / detJ_1d # Outward normal
 
                         if callable(self.value):
-                            q_exact = np.array(self.value(pos_gp[0], pos_gp[1]))
+                            #q_exact = np.array(self.value(pos_gp[0], pos_gp[1]))
+                            g = self.value(pos_gp[0], pos_gp[1])
                         else:
-                            q_exact = np.array(self.value)
+                            #q_exact = np.array(self.value)
+                            g = self.value
                             
-                        dof_integral += np.dot(q_exact, normal) * sign * detJ_1d * w
+                        #dof_integral += np.dot(q_exact, normal) * sign * detJ_1d * w
+                        dof_integral += g * sign * detJ_1d * w
                     constrained[global_dof] = dof_integral
                 
         if len(constrained) == 0:

@@ -103,7 +103,7 @@ def run_convergence_study():
         def origin_cell_marker(x, y):
             return (x < L/n) and (y < W/n)
 
-        bc_q = DirichletBC(V_q, value=[0.0, 0.0], boundary_marker_func=boundary_marker, component=0)
+        bc_q = DirichletBC(V_q, value=0.0, boundary_marker_func=boundary_marker, component=0)
         bc_u = DirichletBC(V_u, value=exact_pressure, boundary_marker_func=origin_cell_marker, component=0)
 
         def apply_bcs(R, K, U):

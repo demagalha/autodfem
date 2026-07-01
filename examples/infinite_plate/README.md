@@ -1,4 +1,4 @@
-# <Problem Name>
+# Linear Elasticity: Kirsch Solution for a Plate with a Hole
 
 ## Kirsch Infinite Plate
 

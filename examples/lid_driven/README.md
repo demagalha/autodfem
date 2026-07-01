@@ -1,4 +1,4 @@
-# <Problem Name>
+# Incompressible Navier–Stokes: Lid-Driven Cavity Benchmark
 
 ## Lid Driven Cavity
 
@@ -13,6 +13,8 @@ The characteristic velocity is
 $$
 U = 1.
 $$
+
+The domain is the unity square $$\Omega = [0,1]^2$$
 
 ---
 
