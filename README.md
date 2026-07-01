@@ -42,6 +42,20 @@ In the element class (and others) there is naming like `n_nodes`... which actual
 
 I did not change it because most of the code depended on it, so this “double-thinking” is still useful in many places.
 
+## Examples
+
+Each example contains its own `README.md` explaining the formulation and how to run it.
+
+| Example | Description |
+|---------|-------------|
+| [Poisson](examples/poisson/) | Steady Poisson equation. |
+| [Infinite Plate](examples/infinite_plate/) | Linear Elasticity example with an infinite plate approximation. |
+| [Elliptic Membrane](examples/eliptic_membrane/) | Linear Elasticity membrane problem. |
+| [Lid Driven Cavity](examples/lid_driven/) | Incompressible flow benchmark (with Taylor-Hood Elements). |
+| [Mixed Poisson](examples/mixed_poisson/) | Mixed formulation using Raviart-Thomas elements. |
+| [Transient Heat](examples/transient_heat/) | Time-dependent heat equation. |
+| [Cook's Membrane (Hyperelasticity)](examples/cook_membrane_hyperelasticity/) | Hyperelastic Cook's membrane benchmark. |
+
 ## Using it
 
 The examples files should explain themselves with their own markdown files, but the main idea is as follows:
