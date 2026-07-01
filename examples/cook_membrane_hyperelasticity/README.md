@@ -21,7 +21,7 @@ $$
 \qquad\text{in }\Omega,
 $$
 
-where $\mathbf P$ is the first Piola--Kirchhoff stress tensor.
+where $\mathbf P$ is the first Piola-Kirchhoff stress tensor.
 
 The deformation gradient is
 
@@ -38,15 +38,7 @@ $$
 For the benchmark material model ($\Psi_1$), the strain-energy density is
 
 $$
-\Psi(\mathbf C)
-=
-\frac{\mu}{2}(\operatorname{tr}\mathbf C-2)
--
-\mu\ln J
-+
-\frac{\lambda}{4}(J^2-1)
--
-\frac{\lambda}{2}\ln J,
+\Psi(\mathbf C) = \frac{\mu}{2}(\operatorname{tr}\mathbf C-2) - \mu\ln J + \frac{\lambda}{4}(J^2-1) - \frac{\lambda}{2}\ln J,
 $$
 
 where
@@ -65,14 +57,7 @@ $$S = \frac{\lambda}{2}(J^2- 1)\mathbf C^{-1} + \mu (\mathbf I -\mathbf C^{-1})$
 The resulting first Piola-Kirchhoff stress is found after applying the relation $P = F S$
 
 $$
-\mathbf P
-=
-\mu\mathbf F
-+
-\left(
-\frac{\lambda}{2}(J^2-1)-\mu
-\right)
-\mathbf F^{-T},
+\mathbf P = \mu\mathbf F + \left(\frac{\lambda}{2}(J^2-1)-\mu\right)\mathbf F^{-T},
 $$
 
 which is exactly the constitutive model implemented in this example.
