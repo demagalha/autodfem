@@ -201,7 +201,7 @@ def navier_stokes_weak_form(mapped, gp, e):
 We assemble it
 
 ```python
-assembler = MixedAssembler(V, navier_stokes_weak_form, quad_degree=3)
+assembler = MixedAssembler(V, navier_stokes_weak_form, quad_degree=4)
 ```
 
 And we define our boundary conditions (we fixed one boundary dof for the pressure, otherwise we wouldn't be able to solve it)

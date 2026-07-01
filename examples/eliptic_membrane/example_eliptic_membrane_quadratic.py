@@ -115,7 +115,7 @@ if __name__ == "__main__":
         
         # Use Quad9
         V = FunctionSpace(mesh, Quad9(), n_components=2)
-        assembler = Assembler(V, linear_elasticity, quad_degree=3)
+        assembler = Assembler(V, linear_elasticity, quad_degree=5)
         
         def apply_bcs(R, K, U):
             tol = 1e-4

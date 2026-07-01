@@ -173,7 +173,7 @@ if __name__ == "__main__":
         V_p = FunctionSpace(mesh, Quad0(), n_components=1)
         V_mixed = MixedFunctionSpace([V_u, V_p])
         
-        assembler = MixedAssembler(V_mixed, mixed_spp1748_hyperelasticity, quad_degree=3)
+        assembler = MixedAssembler(V_mixed, mixed_spp1748_hyperelasticity, quad_degree=5)
 
         U_current = np.zeros(V_mixed.ndofs)
         n_steps = 4 

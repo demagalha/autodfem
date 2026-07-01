@@ -228,7 +228,7 @@ mesh_sizes = [1.0, 0.8, 0.6, 0.4, 0.2, 0.1, 0.05]
         
         # Use Quad9
         V = FunctionSpace(mesh, Quad9(), n_components=2)
-        assembler = Assembler(V, linear_elasticity, quad_degree=3)
+        assembler = Assembler(V, linear_elasticity, quad_degree=5)
         
         def apply_bcs(R, K, U):
             tol = 1e-4

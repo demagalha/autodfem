@@ -157,7 +157,11 @@ We then define the function space, associating it with a mesh and type of elemen
 V = FunctionSpace(mesh, Quad4(), n_components=1)
 ```
 
-We instantiate the assemble:
+We instantiate the assembler. ```quad_degree``` specifies the maximum polynomial degree that the Gauss-Legendre quadrature rule integrates exactly. This exactness assumes that the integrand on the reference element is polynomial, which is the case for affine mappings of polynomial finite elements.
+
+The number of quadrature points is determined from the exactness requirement as:
+
+$$n = \left\lfloor \frac{\text{quad\_degree}+2}{2} \right\rfloor$$
 
 ```python
 assembler = Assembler(V, poisson_weak_form, quad_degree=2)

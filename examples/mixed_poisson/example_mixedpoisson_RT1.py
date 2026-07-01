@@ -91,7 +91,7 @@ def run_convergence_study():
 
             return [R_q, R_u]
 
-        assembler = MixedAssembler(V, mixed_poisson_weak, quad_degree=3)
+        assembler = MixedAssembler(V, mixed_poisson_weak, quad_degree=5)
 
         # Boundary Conditions
         def boundary_marker(x, y):
@@ -126,10 +126,10 @@ def run_convergence_study():
         export_vtu(V_q, q_sol, f"results/flux_RT1_err_{n}.vtu", field_name="Flux_Error", n_vis_pts=None, exact_func=exact_flux)
 
         # Calculate Errors
-        err_u_sq = assemble_scalar(V_u, l2_pressure_error, u_sol=u_sol, quad_degree=3)
+        err_u_sq = assemble_scalar(V_u, l2_pressure_error, u_sol=u_sol, quad_degree=5)
         err_u = np.sqrt(err_u_sq)
 
-        err_q_sq = assemble_scalar(V_q, l2_flux_error, u_sol=q_sol, quad_degree=3)
+        err_q_sq = assemble_scalar(V_q, l2_flux_error, u_sol=q_sol, quad_degree=5)
         err_q = np.sqrt(err_q_sq)
 
         errors_u.append(err_u)

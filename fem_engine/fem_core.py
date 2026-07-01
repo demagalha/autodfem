@@ -32,7 +32,9 @@ def _generate_gauss_legendre_quadrature(n):
         weights[i] = 2.0 / ((1.0 - points[i] ** 2) * dlegendre(n, points[i]) ** 2)
     return points, weights
 
-def gauss_legendre_quadrature(n):
+def gauss_legendre_quadrature(degree):
+    n = (degree + 2) // 2
+
     if n in _GAUSS_TABLE:
         return _GAUSS_TABLE[n]
 

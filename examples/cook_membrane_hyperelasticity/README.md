@@ -260,7 +260,7 @@ for n_el in element_densities:
     mesh = import_mesh(msh_file, element_type="quad9")
     
     V = FunctionSpace(mesh, Quad9(), n_components=2)
-    assembler = Assembler(V, spp1748_hyperelasticity, quad_degree=3)
+    assembler = Assembler(V, spp1748_hyperelasticity, quad_degree=5)
 
     U_current = np.zeros(V.ndofs)
     n_steps = 4

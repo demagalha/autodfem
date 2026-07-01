@@ -68,7 +68,7 @@ def navier_stokes_weak_form(mapped, gp, e):
 
     return [R_u, R_p]
 
-assembler = MixedAssembler(V, navier_stokes_weak_form, quad_degree=3)
+assembler = MixedAssembler(V, navier_stokes_weak_form, quad_degree=4)
 
 # 4. Boundary conditions
 def left_wall(x, y): return abs(x) < 1e-6
