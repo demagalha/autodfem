@@ -45,7 +45,7 @@ Our domain will be the unit square $$\Omega = [0,1]^2$$
 The flux space requires square-integrable divergence
 
 $$
-\mathbf{H}(div, \Omega) = \left\{\mathbf{v} \in [L^2(\Omega)]^2 \mid \nabla \cdot \mathbf{v} \in L^2(\Omega) \right\}
+\mathbf{H}(div, \Omega) = \{\mathbf{v} \in [L^2(\Omega)]^2 \mid \nabla \cdot \mathbf{v} \in L^2(\Omega) \}
 $$
 
 while the other space for u requires it only being in $$L^2(\Omega)$$
@@ -53,7 +53,7 @@ while the other space for u requires it only being in $$L^2(\Omega)$$
 And since we must enforce our boundary condition we will denote the spaces for q and u as
 
 $$
-\mathbf{V_q} = \left\{\mathbf{v} \in \mathbf{H}(div, \Omega) \mid \mathbf{v} \cdot \mathbf{n} = g \quad \text{on } \partial \Omega \right\}
+\mathbf{V_q} = \{\mathbf{v} \in \mathbf{H}(div, \Omega) \mid \mathbf{v} \cdot \mathbf{n} = g \quad \text{on } \partial \Omega \}
 $$
 
 and for u
