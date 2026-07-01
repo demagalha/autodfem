@@ -10,7 +10,7 @@ from fem_engine.postprocess import export_vtu
 
 # 1. Physics Parameters
 L, W = 2.0, 1.0
-k_diff = 1.0 # Thermal conductivity/diffusivity
+k_diff = 1.0 # Thermal conductivity
 rho_c = 1.0 # Volumetric heat capacity
 
 # 2. The Weak Form (with theta-method) ---
