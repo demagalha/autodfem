@@ -138,7 +138,7 @@ if __name__ == "__main__":
         assembler = Assembler(V, spp1748_hyperelasticity, quad_degree=3)
 
         U_current = np.zeros(V.ndofs)
-        n_steps = 4 
+        n_steps = 4
 
         # Incremental Load
         for step in range(1, n_steps + 1):
