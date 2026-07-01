@@ -214,9 +214,7 @@ while current_time < t_end:
 A few things to comment on the above snippet: ```dt``` and ```theta``` are scalars, numbers, they go to the weak form exactly as they are. Now with the use of ```global_params``` we pass the ```u_old``` as ```U_n```. The assembler automatically will generate a second variable with the name ```grad_u_old``` inside of it. **So the naming must match inside the weak form and the global_params for the fields**
 
 The exact steady state solution will be
-$$
-u = 100 (1- x/L)
-$$
+$$u = 100 (1- x/L)$$
 
 So we will assemble the error as well (after the time steps our solution has entered steady state already)
 
