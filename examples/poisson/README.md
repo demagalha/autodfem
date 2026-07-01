@@ -161,7 +161,9 @@ We instantiate the assembler. ```quad_degree``` specifies the maximum polynomial
 
 The number of quadrature points is determined from the exactness requirement as:
 
-$$n = \left\lfloor \frac{\text{quad\_degree}+2}{2} \right\rfloor$$
+$$
+n = \left\lfloor \frac{\texttt{quad\_degree}+2}{2} \right\rfloor
+$$
 
 ```python
 assembler = Assembler(V, poisson_weak_form, quad_degree=2)
