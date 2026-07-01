@@ -38,7 +38,7 @@ $$
 For the benchmark material model ($\Psi_1$), the strain-energy density is
 
 $$
-\Psi(\mathbf C) = \frac{\mu}{2}(\operatorname{tr}\mathbf C-2) - \mu\ln J + \frac{\lambda}{4}(J^2-1) - \frac{\lambda}{2}\ln J,
+\Psi(\mathbf C) = \frac{\mu}{2}(\text{tr}\mathbf C-3) - \mu\ln J + \frac{\lambda}{4}(J^2-1) - \frac{\lambda}{2}\ln J,
 $$
 
 where
