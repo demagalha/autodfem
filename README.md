@@ -2,7 +2,7 @@
 
 A little FEM framework I've built for learning mostly.
 
-As I was studying on how automatic differentiation works, I came across the way to do it with Dual Numbers... And so I tried to come up with something to apply it... Why not the Jacobian in Newton's Method. And so I began writing it from what I knew already (and didn't).
+As I was studying on how automatic differentiation works, I came across the way to do it with [Dual Numbers](https://en.wikipedia.org/wiki/Dual_number)... And so I tried to come up with something to apply it... Why not the Jacobian in Newton's Method. And so I began writing it from what I knew already (and didn't).
 
 
 ## Disclaimer
@@ -44,7 +44,7 @@ I did not change it because most of the code depended on it, so this “double-t
 
 ## Examples
 
-Each example contains its own `README.md` explaining the formulation and how to run it.
+Each example contains its own `README.md` explaining the formulation and how to run it. Github is really problematic on how it deals with latex/math, for example some **bold** letters that should represent vectors in the examples readme's are not rendering properly. So one should proceed with care.
 
 | Example | Description |
 |---------|-------------|
