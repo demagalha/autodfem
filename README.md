@@ -100,9 +100,9 @@ The weak form must follow the structure above.
 
 The system is assembled as a **residual formulation**:
 
-$
+$$
 R(u; v) = 0
-$
+$$
 
 This is important: the assembler returns a residual-based formulation designed for nonlinear problems.
 
