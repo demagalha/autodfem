@@ -253,7 +253,7 @@ def apply_bcs(R, K, U):
         return R, K
 ```
 
-We then solve and export the values of the stress with the function ```average_at_nodes```, which will average the values of the stress at nodes so the visualization of it will be "nicer" and continuous (although it isn't really)
+We then solve and export the values of the stress with the function ```average_at_nodes```, which will average the values of the stress at nodes so the visualization of it will be "nicer" and continuous through element edges(although it isn't really)
 
 ```python
 U_final = solve_newton_raphson(np.zeros(V.ndofs), assembler_el.assemble, apply_bcs)
