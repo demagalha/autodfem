@@ -60,7 +60,7 @@ class DirichletBC:
         geom_element = self.V.mesh.geom_element
         
         constrained = {}
-        quad_degree = 2 # 2 points is enough for quadratic edges
+        quad_degree = 5 # 3 points is enough for quadratic edges
         
         # Derivatives of the 1D mapping functions with respect to 's'
         ref_tangents = [
