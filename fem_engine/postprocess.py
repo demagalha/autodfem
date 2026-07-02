@@ -290,7 +290,7 @@ def extrapolate_gauss_to_nodes(V_source, U_source, derived_func, n_components=1,
     """
     # Automatically select a quadrature degree if not provided
     if quad_degree is None:
-        quad_degree = 3 if V_source.mesh.cell_type == "quad9" else 2
+        quad_degree = 5 if V_source.mesh.cell_type == "quad9" else 2
 
     # Target space is always Quad4 (corners/vertex only)
     V_target = FunctionSpace(V_source.mesh, Quad4(), n_components=n_components)
@@ -385,7 +385,7 @@ def extrapolate_mixed_gauss_to_nodes(V_u, u_sol, V_p, p_sol, derived_func, n_com
     Takes BOTH the displacement space (V_u) and pressure space (V_p) simultaneously.
     """
     if quad_degree is None:
-        quad_degree = 3 if V_u.mesh.cell_type == "quad9" else 2
+        quad_degree = 5 if V_u.mesh.cell_type == "quad9" else 2
 
     # Target space is always Quad4 (corners only) for continuous visualization
     V_target = FunctionSpace(V_u.mesh, Quad4(), n_components=n_components)
