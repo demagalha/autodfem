@@ -254,3 +254,38 @@ class NeumannBC:
                             R_global[dofs] -= N_bnd * t_val[c] * detJ_1d * weight
                                 
         return R_global, K_global
+    
+class PointConstraintBC:
+    def __init__(self, function_space, value=0.0, global_dof_idx=0, component=None):
+        self.V = function_space
+        self.value = value
+        self.component = component
+        
+        # Target the very first DOF belonging to the space
+        # (or any specific index)
+        base_dof = global_dof_idx
+        
+        if self.component is None:
+            # If scalar space, n_components is 1
+            self.target_dof = base_dof * self.V.n_components + 0
+        else:
+            self.target_dof = base_dof * self.V.n_components + self.component
+
+    def apply(self, R_global, K_global, U_current, method="strong", offset=0, is_linear=False):
+        dof = self.target_dof + offset
+        val = self.value
+
+        if is_linear:
+            # Linear elimination
+            R_global -= (K_global[:, dof].toarray().ravel() * val)
+            K_global[dof, :] = 0.0
+            K_global[:, dof] = 0.0
+            K_global[dof, dof] = 1.0
+            R_global[dof] = val
+        else:
+            # Non-linear Newton step
+            K_global[dof, :] = 0.0
+            K_global[dof, dof] = 1.0
+            R_global[dof] = U_current[dof] - val
+            
+        return R_global, K_global

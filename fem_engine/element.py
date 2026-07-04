@@ -111,8 +111,9 @@ class Quad4(Element):
     def get_volume_quadrature(self, degree):
         xi_1d, weights_1d = gauss_legendre_quadrature(degree)
         pts, wgts = [], []
-        for i in range(degree):
-            for j in range(degree):
+        n_pts = len(xi_1d)
+        for i in range(n_pts):
+            for j in range(n_pts):
                 pts.append(np.array([xi_1d[i], xi_1d[j]]))
                 wgts.append(weights_1d[i] * weights_1d[j])
         return pts, wgts
@@ -210,8 +211,9 @@ class Quad9(Element):
     def get_volume_quadrature(self, degree):
         xi_1d, weights_1d = gauss_legendre_quadrature(degree)
         pts, wgts = [], []
-        for i in range(degree):
-            for j in range(degree):
+        n_pts = len(xi_1d)
+        for i in range(n_pts):
+            for j in range(n_pts):
                 pts.append(np.array([xi_1d[i], xi_1d[j]]))
                 wgts.append(weights_1d[i] * weights_1d[j])
         return pts, wgts
@@ -295,8 +297,9 @@ class QuadRT0(Element):
         # Re-use standard quad integration
         xi_1d, weights_1d = gauss_legendre_quadrature(degree)
         pts, wgts = [], []
-        for i in range(degree):
-            for j in range(degree):
+        n_pts = len(xi_1d)
+        for i in range(n_pts):
+            for j in range(n_pts):
                 pts.append(np.array([xi_1d[i], xi_1d[j]]))
                 wgts.append(weights_1d[i] * weights_1d[j])
         return pts, wgts
@@ -470,8 +473,9 @@ class QuadRT1(Element):
     def get_volume_quadrature(self, degree):
         xi_1d, w_1d = gauss_legendre_quadrature(degree)
         pts, wgts = [], []
-        for i in range(degree):
-            for j in range(degree):
+        n_pts = len(xi_1d)
+        for i in range(n_pts):
+            for j in range(n_pts):
                 pts.append(np.array([xi_1d[i], xi_1d[j]]))
                 wgts.append(w_1d[i] * w_1d[j])
         return pts, wgts
