@@ -209,6 +209,10 @@ class MixedAssembler:
             else:
                 local_params[key] = global_params[key]
 
+        # --- GEOMETRY ---
+        geom_node_indices = self.V.spaces[0].mesh.cells[e][1]
+        elem_nodes = self.V.spaces[0].mesh.points[geom_node_indices]
+
         def elem_residual(U_loc_flat):
             U_loc_flat = np.array(U_loc_flat, dtype=object)
             cursor = 0
@@ -225,10 +229,6 @@ class MixedAssembler:
             R_loc = np.zeros_like(U_loc_flat, dtype=object)
 
             for k, (gp, w) in enumerate(zip(self.pts, self.wgts)):
-                
-                # --- GEOMETRY ---
-                geom_node_indices = self.V.spaces[0].mesh.cells[e][1]
-                elem_nodes = self.V.spaces[0].mesh.points[geom_node_indices]
 
                 B_ref_geom = self.geom_element.shape_gradients_reference(gp)
                 J = self.geom_element.jacobian(elem_nodes, B_ref=B_ref_geom)
