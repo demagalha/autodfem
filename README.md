@@ -51,6 +51,7 @@ Each example contains its own `README.md` explaining the formulation and how to 
 | [Poisson](examples/poisson/) | Steady Poisson equation. |
 | [Infinite Plate](examples/infinite_plate/) | Linear Elasticity example with an infinite plate approximation. |
 | [Elliptic Membrane](examples/eliptic_membrane/) | Linear Elasticity membrane problem. |
+| [Helmholtz](examples/helmholtz/) | Acoustic cavity response with a monopole source. |
 | [Lid Driven Cavity](examples/lid_driven/) | Incompressible flow benchmark (with Taylor-Hood Elements). |
 | [Mixed Poisson](examples/mixed_poisson/) | Mixed formulation using Raviart-Thomas elements. |
 | [Transient Heat](examples/transient_heat/) | Time-dependent heat equation. |

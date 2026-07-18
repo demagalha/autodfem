@@ -117,11 +117,13 @@ Since our solver relies heavily on AD through Dual Numbers and for now it doesn'
 By substituting these into the complex weak form and separating the real and imaginary components, we obtain a coupled system of two purely real equations.
 
 **1. Real Equation:**
+
 $$
 (\nabla p_r, \nabla v_r) - (k^2 p_r, v_r) = 0
 $$
 
 **2. Imaginary Equation:**
+
 $$
 (\nabla p_i, \nabla v_i) - (k^2 p_i, v_i) = (\omega \rho_0 q, v_i)
 $$
