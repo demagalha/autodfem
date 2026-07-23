@@ -114,7 +114,7 @@ Since our solver relies heavily on AD through Dual Numbers and for now it doesn'
 * $v = v_r + j v_i$
 * $\tilde{q} = q$ (Assuming our spatial source distribution is purely real)
 
-By substituting these into the complex weak form and separating the real and imaginary components, we obtain a coupled system of two purely real equations.
+By substituting these into the complex weak form and separating the real and imaginary components, we obtain a system of two purely real equations.
 
 **1. Real Equation:**
 
@@ -128,7 +128,7 @@ $$
 (\nabla p_i, \nabla v_i) - (k^2 p_i, v_i) = (\omega \rho_0 q, v_i)
 $$
 
-This translates to assembling two independent residual blocks ($R_r$ and $R_i$) within a mixed function space.
+This translates to assembling two independent residual blocks ($R_r$ and $R_i$) within a mixed function space. **Note: we don't really need to assemble a mixed system, our equations are actually uncoupled, but just for the sake of not having to define two weak form functions, it will be done this way**
 
 ---
 
