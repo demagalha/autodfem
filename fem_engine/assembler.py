@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.sparse import lil_matrix
+from scipy.sparse import coo_matrix, lil_matrix
 import time
 import inspect
 
@@ -37,43 +37,48 @@ class Assembler:
         geom_node_indices = self.V.mesh.cells[e][1]
         elem_nodes = self.V.mesh.points[geom_node_indices]
         
+        # PRECOMPUTE GEOMETRY (PURE FLOATS)
+        mapped_data = []
+        
+        for i in range(len(self.wgts)):
+            weight = self.wgts[i]
+            gp = self.pts[i]
+            N_ref = self.N_cache[i]
+            B_ref = self.B_ref_cache[i]
+            
+            # Geometry Mapping
+            B_ref_geom = self.geom_element.shape_gradients_reference(gp)
+            J = self.geom_element.jacobian(elem_nodes, B_ref=B_ref_geom)
+            detJ = np.linalg.det(J)
+            invJ = np.linalg.inv(J)
+            
+            # Physical coordinate uses the geometry shape functions
+            N_geom = self.geom_element.shape_functions(gp)
+            pos_gp = N_geom @ elem_nodes 
+            
+            # Field Mapping
+            N = self.V.element.push_forward_values(N_ref, J, detJ)
+            B_x = self.V.element.push_forward_derivatives(B_ref, J, invJ, detJ)
+            
+            # Store everything required for integration
+            mapped_data.append((weight, detJ, pos_gp, N, B_x))
+            
+        # DEFINE RESIDUAL
         def elem_residual(u_loc_1d):
-            R_loc_tensor = np.zeros((n_nodes_per_elem, self.V.n_components), dtype=object)
-            u_loc = np.array(u_loc_1d, dtype=object).reshape((n_nodes_per_elem, self.V.n_components))
-
-            for i in range(len(self.wgts)):
-                weight = self.wgts[i]
-                gp = self.pts[i]
-                N_ref = self.N_cache[i]
-                B_ref = self.B_ref_cache[i]
+            # u_loc_1d is natively a DualTensor passed by jacobian
+            u_loc = u_loc_1d.reshape((n_nodes_per_elem, self.V.n_components))
+            
+            # Initialize a DualTensor of zeros to accumulate the residual
+            R_loc = u_loc * 0.0 
+            
+            for (weight, detJ, pos_gp, N, B_x) in mapped_data:
                 
-                # --- GEOMETRY ---
-                B_ref_geom = self.geom_element.shape_gradients_reference(gp)
-                J = self.geom_element.jacobian(elem_nodes, B_ref=B_ref_geom)
-                detJ = np.linalg.det(J)
-                invJ = np.linalg.inv(J)
-                
-                # Physical coordinate uses the geometry shape functions
-                N_geom = self.geom_element.shape_functions(gp)
-                pos_gp = N_geom @ elem_nodes 
-                
-                # --- FIELDS ---
-
-                N = self.V.element.push_forward_values(N_ref, J, detJ)
-                B_x = self.V.element.push_forward_derivatives(B_ref, J, invJ, detJ)
-
-                # now a little change to handle RT as well...
                 if self.V.element.mapping_type == "Hdiv":
-                    # N is (4, 2). We want a (2,) vector out.
-                    # We transpose N to (2, 4) and multiply by u_loc (4, 1) -> (2, 1)
                     u_gp = N.T @ u_loc
-
-                    # B_x for Hdiv is the divergence (4,)
-                    # grad_u becomes the scalar divergence at integration point
                     grad_u = B_x @ u_loc
                 else:
                     # H1 mainly
-                    u_gp =  N @ u_loc
+                    u_gp = N @ u_loc
                     grad_u = B_x @ u_loc
 
                 if self.expects_state:
@@ -90,9 +95,9 @@ class Assembler:
                 else:
                     integrand = self.weak_form(N, B_x, u_gp, grad_u, pos_gp, e)
 
-                R_loc_tensor += integrand * detJ * weight
+                R_loc += integrand * (detJ * weight)
                 
-            return R_loc_tensor.flatten()
+            return R_loc.flatten()
 
         return jacobian(elem_residual, u_loc_guess)
 
@@ -109,8 +114,13 @@ class Assembler:
 
         start_time = time.time()
         ndofs = self.V.ndofs
-        K_global = lil_matrix((ndofs, ndofs))
+        
         R_global = np.zeros(ndofs)
+        
+        # Pre-allocate lists for COO assembly
+        rows = []
+        cols = []
+        data = []
         
         for e in range(len(self.V.mesh.cells)):
             dof_indices = self.V.get_dofs(e)
@@ -137,10 +147,19 @@ class Assembler:
             # Mat mul with diagonal sign matrix
             K_loc_signed = K_loc * np.outer(dof_signs, dof_signs)
             
-            for i in range(len(dof_indices)):
-                R_global[dof_indices[i]] += R_loc_signed[i]
-                for j in range(len(dof_indices)):
-                    K_global[dof_indices[i], dof_indices[j]] += K_loc_signed[i, j]
+            # Vectorized COO Data
+            # meshgrid generates all index pairs for this element's DOFS instantly
+            grid_i, grid_j = np.meshgrid(dof_indices, dof_indices, indexing='ij')
+            
+            rows.extend(grid_i.flatten())
+            cols.extend(grid_j.flatten())
+            data.extend(K_loc_signed.flatten())
+            
+            # Residual is a dense 1D array
+            R_global[dof_indices] += R_loc_signed
+
+        # Build COO matrix (automatically sums duplicates), then instantly convert to LIL
+        K_global = coo_matrix((data, (rows, cols)), shape=(ndofs, ndofs)).tolil()
 
         print(f"Assembly took {time.time() - start_time:.3f} seconds")
         return R_global, K_global
@@ -213,8 +232,29 @@ class MixedAssembler:
         geom_node_indices = self.V.spaces[0].mesh.cells[e][1]
         elem_nodes = self.V.spaces[0].mesh.points[geom_node_indices]
 
+        # PRECOMPUTE GEOMETRY (PURE FLOATS)
+        mapped_data = []
+        for k, (gp, w) in enumerate(zip(self.pts, self.wgts)):
+            B_ref_geom = self.geom_element.shape_gradients_reference(gp)
+            J = self.geom_element.jacobian(elem_nodes, B_ref=B_ref_geom)
+            detJ = np.linalg.det(J)
+            invJ = np.linalg.inv(J)
+
+            N_geom = self.geom_element.shape_functions(gp)
+            pos_gp = N_geom @ elem_nodes
+
+            space_mappings = []
+            for i, V in enumerate(self.V.spaces):
+                N_ref = self.N_cache[i][k]
+                B_ref = self.B_cache[i][k]
+                N = V.element.push_forward_values(N_ref, J, detJ)
+                B_x = V.element.push_forward_derivatives(B_ref, J, invJ, detJ)
+                space_mappings.append((N, B_x))
+                
+            mapped_data.append((w, detJ, pos_gp, space_mappings))
+
         def elem_residual(U_loc_flat):
-            U_loc_flat = np.array(U_loc_flat, dtype=object)
+            # U_loc_flat is a natively passed DualTensor
             cursor = 0
             locals_split = []
 
@@ -226,28 +266,13 @@ class MixedAssembler:
                 locals_split.append(chunk.reshape((n_nodes, V.n_components)))
                 cursor += size
 
-            R_loc = np.zeros_like(U_loc_flat, dtype=object)
+            # Initialize a DualTensor of zeros with the exact same shape/variables as the input
+            R_loc = U_loc_flat * 0.0
 
-            for k, (gp, w) in enumerate(zip(self.pts, self.wgts)):
-
-                B_ref_geom = self.geom_element.shape_gradients_reference(gp)
-                J = self.geom_element.jacobian(elem_nodes, B_ref=B_ref_geom)
-                detJ = np.linalg.det(J)
-                invJ = np.linalg.inv(J)
-
-                N_geom = self.geom_element.shape_functions(gp)
-                pos_gp = N_geom @ elem_nodes
-
-                # --- FIELDS ---
+            for (w, detJ, pos_gp, space_mappings) in mapped_data:
                 mapped = []
                 for i, V in enumerate(self.V.spaces):
-                    N_ref = self.N_cache[i][k]
-                    B_ref = self.B_cache[i][k]
-
-                    # Push forward using the element's specific mapping rules
-                    N = V.element.push_forward_values(N_ref, J, detJ)
-                    B_x = V.element.push_forward_derivatives(B_ref, J, invJ, detJ)
-                    
+                    N, B_x = space_mappings[i]
                     u_loc = locals_split[i]
                     
                     if V.element.mapping_type == "Hdiv":
@@ -258,6 +283,7 @@ class MixedAssembler:
                         grad_u = B_x @ u_loc
 
                     mapped.append((N, B_x, u_gp, grad_u))
+                    
                 # --- STATE HANDLING --- # This is somewhat very fragile... beware
                 if self.expects_state:
                     gp_state = {}
@@ -265,13 +291,7 @@ class MixedAssembler:
                         if is_field:
                             mapped_state = []
                             for i, V in enumerate(self.V.spaces):
-                                N_ref = self.N_cache[i][k]
-                                B_ref = self.B_cache[i][k]
-
-                                # Push forward using the element's specific mapping rules
-                                N = V.element.push_forward_values(N_ref, J, detJ)
-                                B_x = V.element.push_forward_derivatives(B_ref, J, invJ, detJ)
-
+                                N, B_x = space_mappings[i]
                                 u_loc_state = local_params[key][i]
 
                                 if V.element.mapping_type == "Hdiv":
@@ -280,7 +300,7 @@ class MixedAssembler:
                                 else:
                                     u_gp_state = N @ u_loc_state
                                     grad_u_state = B_x @ u_loc_state
-                                
+
                                 # Appends a tuple matching the current field map
                                 mapped_state.append((u_gp_state, grad_u_state))
                             gp_state[key] = mapped_state
@@ -293,11 +313,13 @@ class MixedAssembler:
 
                 cursor = 0
                 for i, contrib in enumerate(contribs):
-                    size = contrib.size
-                    R_loc[cursor:cursor+size] += contrib.flatten() * detJ * w
+                    # We must flatten the DualTensor to 1D and multiply by integration weights
+                    flat_contrib = contrib.flatten() * (detJ * w)
+                    size = flat_contrib.real.size
+                    R_loc[cursor:cursor+size] += flat_contrib
                     cursor += size
 
-            return R_loc
+            return R_loc.flatten()
 
         # Pre multiply by sign
         U_loc = U_global[all_dofs] * all_signs
@@ -324,15 +346,27 @@ class MixedAssembler:
 
         ndofs = self.V.ndofs
         R = np.zeros(ndofs)
-        K = lil_matrix((ndofs, ndofs))
+        
+        # Pre-allocate lists for COO assembly
+        rows = []
+        cols = []
+        data = []
 
         for e in range(len(self.V.spaces[0].mesh.cells)):
             R_loc, K_loc, dofs = self.assemble_element(e, U, global_params, param_keys)
 
-            for i in range(len(dofs)):
-                R[dofs[i]] += R_loc[i]
-                for j in range(len(dofs)):
-                    K[dofs[i], dofs[j]] += K_loc[i, j]
+            # Vectorized COO Data
+            grid_i, grid_j = np.meshgrid(dofs, dofs, indexing='ij')
+            
+            rows.extend(grid_i.flatten())
+            cols.extend(grid_j.flatten())
+            # In MixedAssembler, K_loc is already signed in assemble_element
+            data.extend(K_loc.flatten())
+            
+            R[dofs] += R_loc
+
+        # Build COO matrix (automatically sums duplicates), then instantly convert to LIL
+        K = coo_matrix((data, (rows, cols)), shape=(ndofs, ndofs)).tolil()
 
         return R, K
     

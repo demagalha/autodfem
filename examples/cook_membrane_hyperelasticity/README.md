@@ -138,30 +138,22 @@ We will define the weak form. We, whenever needing to defien matrix or multidime
 
 ```python
 # 2. SPP-1748 Hyperelastic Weak Form (psi_1)
+# 2. SPP-1748 Hyperelastic Weak Form (psi_1)
 def spp1748_hyperelasticity(N, B_x, u_gp, grad_u, x_gp, e):
-    """
-    1st PK Stress derived from: 
-    S = 0.5 * lambda * (J^2 - 1) * C^-1 + mu * (I - C^-1)
-    P = F * S = mu * F + [0.5 * lambda * (J^2 - 1) - mu] * F^-T
-    """
-    F = np.eye(2, dtype=grad_u.dtype) + grad_u.T
-    J = F[0,0] * F[1,1] - F[0,1] * F[1,0]
+    """SPP-1748 Hyperelasticity (psi_1) using pure tensor notation."""
     
-    # F^-T (Inverse Transpose)
-    FinvT = np.zeros((2, 2), dtype=grad_u.dtype)
-    FinvT[0,0] =  F[1,1] / J
-    FinvT[0,1] = -F[1,0] / J
-    FinvT[1,0] = -F[0,1] / J
-    FinvT[1,1] =  F[0,0] / J
+    # 1. Kinematics
+    F = np.eye(2) + grad_u.T
+    J = F.det()
     
+    # 2. Transpose Inverse F^-T
+    FinvT = F.inv().T
+    
+    # 3. 1st Piola-Kirchhoff Stress Tensor P
     coeff = 0.5 * lambda_ * (J**2 - 1.0) - mu
+    P = mu * F + coeff * FinvT
     
-    P = np.zeros((2, 2), dtype=grad_u.dtype)
-    P[0,0] = mu * F[0,0] + coeff * FinvT[0,0]
-    P[0,1] = mu * F[0,1] + coeff * FinvT[0,1]
-    P[1,0] = mu * F[1,0] + coeff * FinvT[1,0]
-    P[1,1] = mu * F[1,1] + coeff * FinvT[1,1]
-    
+    # 4. Residual Vector
     return B_x.T @ P.T
 ```
 
@@ -173,27 +165,22 @@ $$
 
 ```python
 def compute_spp1748_stress(u_gp, grad_u):
-    """Cauchy stress recovery for post-processing: sigma = (P * F^T) / J"""
+    """Cauchy stress recovery for post-processing: sigma = (P @ F^T) / J"""
+    # For post process, things are NumPy arrays... so we may use what is available for it
     F = np.eye(2) + grad_u.T
-    J = F[0,0]*F[1,1] - F[0,1]*F[1,0]
-
-    FinvT = np.zeros((2,2))
-    FinvT[0,0] =  F[1,1]/J
-    FinvT[0,1] = -F[1,0]/J
-    FinvT[1,0] = -F[0,1]/J
-    FinvT[1,1] =  F[0,0]/J
-
-    coeff = 0.5 * lambda_ * (J**2 - 1.0) - mu
-    P = np.zeros((2,2))
-    P[0,0] = mu * F[0,0] + coeff * FinvT[0,0]
-    P[0,1] = mu * F[0,1] + coeff * FinvT[0,1]
-    P[1,0] = mu * F[1,0] + coeff * FinvT[1,0]
-    P[1,1] = mu * F[1,1] + coeff * FinvT[1,1]
-
-    sigma = (P @ F.T) / J
-    sigma_xx = sigma[0,0]
+    J = np.linalg.det(F)
     
-    return sigma_xx
+    # Transpose of the inverse
+    FinvT = np.linalg.inv(F).T
+    
+    # 1st Piola-Kirchhoff Stress Tensor P
+    coeff = 0.5 * lambda_ * (J**2 - 1.0) - mu
+    P = mu * F + coeff * FinvT
+    
+    # Cauchy stress mapping
+    sigma = (P @ F.T) / J
+    
+    return sigma[0, 0] # Return sigma_xx
 ```
 We then define a function to generate our quadratic mesh
 

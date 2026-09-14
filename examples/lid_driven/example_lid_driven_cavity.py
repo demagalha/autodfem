@@ -43,14 +43,7 @@ def navier_stokes_weak_form(mapped, gp, e):
 
     # 2. Pressure gradient
     # the [0] is mostly due to issues with numpy broadcasting and the Dual class... something to fix in the future
-    p_val = p[0]
-    
-    p_div_v = np.zeros_like(visc)
-    for i in range(len(N_u)):
-        p_div_v[i, 0] = B_u[0, i] * p_val
-        p_div_v[i, 1] = B_u[1, i] * p_val
-    
-    # Can be just: p_div_v = B_u.T * p_val
+    p_div_v = B_u.T * p[0]
 
     # 3. Non-linear Advection term: (u . nabla) u
     # 'u' is (2,), 'grad_u' is (2,2). 
@@ -64,7 +57,8 @@ def navier_stokes_weak_form(mapped, gp, e):
     # 4. Continuity equation
     div_u = grad_u[0, 0] + grad_u[1, 1]
     
-    R_p = -np.outer(N_p, [div_u])
+    R_p = -N_p * div_u
+    # -np.outer(N_p, div_u) also works
 
     return [R_u, R_p]
 

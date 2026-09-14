@@ -193,7 +193,8 @@ def navier_stokes_weak_form(mapped, gp, e):
     # 4. Continuity equation
     div_u = grad_u[0, 0] + grad_u[1, 1]
     
-    R_p = -np.outer(N_p, [div_u])
+    R_p = -N_p * div_u
+    # -np.outer(N_p, div_u) also works
 
     return [R_u, R_p]
 ```

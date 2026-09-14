@@ -87,20 +87,13 @@ def generate_quarter_plate_hole(filename, lc_far=0.4, lc_hole=0.015):
 # Weak Form
 def linear_elasticity(N, B_x, u_gp, grad_u, x_gp, e):
     eps = 0.5 * (grad_u + grad_u.T)
-    tr_eps = eps[0,0] + eps[1,1]
-    
-    sigma = np.zeros((2, 2), dtype=grad_u.dtype)
-    sigma[0,0] = lambda_ * tr_eps + 2 * mu * eps[0,0]
-    sigma[1,1] = lambda_ * tr_eps + 2 * mu * eps[1,1]
-    sigma[0,1] = 2 * mu * eps[0,1]
-    sigma[1,0] = 2 * mu * eps[1,0]
-    
+    sigma = lambda_ * eps.trace() * np.eye(2) + 2 * mu * eps
     return B_x.T @ sigma
 
 def compute_sigma_xx(u_gp, grad_u):
     eps = 0.5 * (grad_u + grad_u.T)
-    tr_eps = eps[0,0] + eps[1,1]
-    return lambda_ * tr_eps + 2 * mu * eps[0,0]
+    sigma = lambda_ * np.trace(eps) * np.eye(2) + 2 * mu * eps
+    return sigma[0, 0]
 
 if __name__ == "__main__":
     os.makedirs("results", exist_ok=True)

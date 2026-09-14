@@ -29,7 +29,7 @@ def poisson_weak_form(N, B_x, u_gp, grad_u, x_gp, e):
     
     # Source term: N * f
     # so outer product results in shape (4, 1) matching diff_term.
-    source_term = -np.outer(N, [f_val])
+    source_term = -np.outer(N, f_val)
     
     return diff_term + source_term
 

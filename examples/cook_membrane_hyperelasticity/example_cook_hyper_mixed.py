@@ -37,14 +37,10 @@ def mixed_spp1748_hyperelasticity(mapped, pos_gp, e):
     N_p, B_p, p_gp, grad_p = mapped[1]
     
     # 2. Kinematics
-    F = np.eye(2, dtype=grad_u.dtype) + grad_u.T
-    J = F[0,0] * F[1,1] - F[0,1] * F[1,0]
-    
-    FinvT = np.zeros((2, 2), dtype=grad_u.dtype)
-    FinvT[0,0] =  F[1,1] / J
-    FinvT[0,1] = -F[1,0] / J
-    FinvT[1,0] = -F[0,1] / J
-    FinvT[1,1] =  F[0,0] / J
+    F = np.eye(2) + grad_u.T
+    J = F.det()
+
+    FinvT = F.inv().T
     
     # Extract the scalar pressure from the P0 space
     p = p_gp[0]
@@ -52,12 +48,8 @@ def mixed_spp1748_hyperelasticity(mapped, pos_gp, e):
     # 3. First Piola-Kirchhoff Stress (Using independent 'p')
     # P = mu * F + (p - mu) * F^-T
     coeff = p - mu
-    P = np.zeros((2, 2), dtype=grad_u.dtype)
-    P[0,0] = mu * F[0,0] + coeff * FinvT[0,0]
-    P[0,1] = mu * F[0,1] + coeff * FinvT[0,1]
-    P[1,0] = mu * F[1,0] + coeff * FinvT[1,0]
-    P[1,1] = mu * F[1,1] + coeff * FinvT[1,1]
-    
+    P = mu * F + coeff * FinvT
+
     # 4. Residual for Displacement (Equilibrium)
     R_u = B_u.T @ P.T  # Shape: (9 nodes, 2 components)
     
@@ -72,20 +64,12 @@ def mixed_spp1748_hyperelasticity(mapped, pos_gp, e):
 def compute_spp1748_stress(u_gp, grad_u):
     """Classic pure-displacement recovery for plotting purely from u_sol"""
     F = np.eye(2) + grad_u.T
-    J = F[0,0]*F[1,1] - F[0,1]*F[1,0]
+    J = np.linalg.det(F)
 
-    FinvT = np.zeros((2,2))
-    FinvT[0,0] =  F[1,1]/J
-    FinvT[0,1] = -F[1,0]/J
-    FinvT[1,0] = -F[0,1]/J
-    FinvT[1,1] =  F[0,0]/J
+    FinvT = np.linalg.inv(F).T
 
     coeff = 0.5 * lambda_ * (J**2 - 1.0) - mu
-    P = np.zeros((2,2))
-    P[0,0] = mu * F[0,0] + coeff * FinvT[0,0]
-    P[0,1] = mu * F[0,1] + coeff * FinvT[0,1]
-    P[1,0] = mu * F[1,0] + coeff * FinvT[1,0]
-    P[1,1] = mu * F[1,1] + coeff * FinvT[1,1]
+    P = mu * F + coeff * FinvT
 
     sigma = (P @ F.T) / J
     return sigma[0,0]
@@ -96,7 +80,7 @@ def compute_true_spp1748_mixed_stress(u_gp, grad_u, p_gp, grad_p):
     Uses the independent pressure field solved by the system.
     """
     F = np.eye(2) + grad_u.T
-    J = F[0,0]*F[1,1] - F[0,1]*F[1,0]
+    J = np.linalg.det(F)
     
     # Extract the scalar pressure from the P0 space evaluation
     p = p_gp[0]
@@ -105,11 +89,7 @@ def compute_true_spp1748_mixed_stress(u_gp, grad_u, p_gp, grad_p):
     b = F @ F.T 
     
     # Compute true Cauchy stress: sigma = (1/J) * (mu * b + (p - mu) * I)
-    sigma = np.zeros((2,2))
-    sigma[0,0] = (mu * b[0,0] + (p - mu)) / J
-    sigma[0,1] = (mu * b[0,1]) / J
-    sigma[1,0] = (mu * b[1,0]) / J
-    sigma[1,1] = (mu * b[1,1] + (p - mu)) / J
+    sigma = (mu * b + (p - mu) * np.eye(2)) / J
     
     # Return Sigma_xx for visualization
     return sigma[0,0]
