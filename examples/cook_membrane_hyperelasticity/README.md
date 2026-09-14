@@ -138,7 +138,6 @@ We will define the weak form.
 
 ```python
 # 2. SPP-1748 Hyperelastic Weak Form (psi_1)
-# 2. SPP-1748 Hyperelastic Weak Form (psi_1)
 def spp1748_hyperelasticity(N, B_x, u_gp, grad_u, x_gp, e):
     """SPP-1748 Hyperelasticity (psi_1) using pure tensor notation."""
     
