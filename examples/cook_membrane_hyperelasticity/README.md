@@ -134,7 +134,7 @@ y_bottom_right = 44.0
 y_top_right = 60.0
 ```
 
-We will define the weak form. We, whenever needing to defien matrix or multidimensional values, define them element by element whenever possible.
+We will define the weak form.
 
 ```python
 # 2. SPP-1748 Hyperelastic Weak Form (psi_1)
