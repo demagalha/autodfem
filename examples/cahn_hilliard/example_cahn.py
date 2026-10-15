@@ -150,8 +150,6 @@ if __name__ == "__main__":
         
         # Export frames
         c_sol, mu_sol = V.split(U_n)
-        start_export = time.time()
         exporter.export(c_sol, f"results_cahn_hilliard/cahn_hilliard_{step:04d}.vtu")
-        print(f"-> VTU Export took {time.time() - start_export:.4f}s")
         
     print("\nPhase-separation simulation complete.")

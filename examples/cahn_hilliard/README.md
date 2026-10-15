@@ -46,7 +46,7 @@ To bypass the requirement of $C^1$-continuous elements for a fourth-order PDE, w
 1. **Concentration Equation:**
 
 $$
-\int_\Omega \frac{c - c_{\text{old}}}{\Delta t} q \; d\Omega + \int_\Omega M \nabla \mu_{\text{mid}} \cdot \nabla q \; d\Omega = 0
+\int_\Omega \frac{c - c_{\text{old}}}{\Delta t} q d\Omega + \int_\Omega M \nabla \mu_{\text{mid}} \cdot \nabla q d\Omega = 0
 $$
 
 Where 
@@ -58,10 +58,10 @@ $$\nabla \mu_{\text{mid}} = (1 - \theta) \nabla \mu_{\text{old}} + \theta \nabla
 2. **Chemical Potential Equation:**
 
 $$
-\int_\Omega \mu v \; d\Omega - \int_\Omega f'(c) v \; d\Omega - \int_\Omega \lambda \nabla c \cdot \nabla v \; d\Omega = 0
+\int_\Omega \mu v d\Omega - \int_\Omega f'(c) v d\Omega - \int_\Omega \lambda \nabla c \cdot \nabla v \; d\Omega = 0
 $$
 
-Since the framework utilizes automatic differentiation for the Jacobian, we assemble these directly into the nonlinear residual vector.
+Since the framework uses automatic differentiation for the Jacobian, we assemble these directly into the nonlinear residual vector.
 
 ---
 
@@ -71,7 +71,8 @@ Since the framework utilizes automatic differentiation for the Jacobian, we asse
 - **Element:** Quad4
 - **Function space:** Coupled Mixed Space ($V_c \times V_\mu$), where both $V_c \subset H^1$ and $V_\mu \subset H^1$
 - **Time Integration:** $\theta$-method (Crank-Nicolson when $\theta=0.5$)
-- Instead of the custom AD that is used on most of other examples, on tihs we used JAX.
+- The simulated domain is the unit square
+- Instead of the custom AD that is used on most of other examples, on this we used JAX.
 
 ---
 
@@ -79,7 +80,7 @@ Since the framework utilizes automatic differentiation for the Jacobian, we asse
 
 The full implementation can be found in [example_cahn.py](./example_cook_hyper.py).
 
-We begin with the necessary imports, utilizing the JAX-based `MixedAssembler` for AD compilation:
+We begin with the necessary imports, using the JAX-based `MixedAssembler` for AD compilation from `assembler_jax`:
 
 ```python
 import numpy as np
@@ -177,7 +178,7 @@ def initial_c(x, y):
 
 U_n[c_dofs] = interpolate_to_nodes(V_c, initial_c)
 ```
-Finally, we step through time. Boundary conditions are bypassed since natural Neumann conditions are automatically satisfied by the weak form.
+Finally, we step through time. Boundary conditions are bypassed since natural Neumann conditions are automatically satisfied by the weak form. We are using `CachedVTUExporter` instead of `export_vtu`, which actually calculates the basis fun, jacobian, etc ONCE, making it faster than export_vtu (our mesh doesn't move).
 
 ```python
 def apply_bcs(R, K, U):
@@ -231,5 +232,7 @@ while current_time < t_end:
     c_sol, mu_sol = V.split(U_n)
     exporter.export(c_sol, f"results_cahn_hilliard/cahn_hilliard_{step:04d}.vtu")
 ```
+
+And for these time steps we get:
 
 ![Cahn Result](cahn_result.gif)
