@@ -46,19 +46,19 @@ To bypass the requirement of $C^1$-continuous elements for a fourth-order PDE, w
 1. **Concentration Equation:**
 
 $$
-\int_\Omega \frac{c - c_{\text{old}}}{\Delta t} q \, d\Omega + \int_\Omega M \nabla \mu_{\text{mid}} \cdot \nabla q \, d\Omega = 0
+\int_\Omega \frac{c - c_{\text{old}}}{\Delta t} q \; d\Omega + \int_\Omega M \nabla \mu_{\text{mid}} \cdot \nabla q \; d\Omega = 0
 $$
 
 Where 
 
 $$\nabla \mu_{\text{mid}} = (1 - \theta) \nabla \mu_{\text{old}} + \theta \nabla \mu$$
 
-*(We used a Crank-Nicolson / $\theta$-method approach  for the time-integration of the chemical potential gradient, setting later $\theta = 0.5$)*
+*(We used a Crank-Nicolson / $\theta$ -method approach  for the time-integration of the chemical potential gradient)*
 
 2. **Chemical Potential Equation:**
 
 $$
-\int_\Omega \mu v \, d\Omega - \int_\Omega f'(c) v \, d\Omega - \int_\Omega \lambda \nabla c \cdot \nabla v \, d\Omega = 0
+\int_\Omega \mu v \; d\Omega - \int_\Omega f'(c) v \; d\Omega - \int_\Omega \lambda \nabla c \cdot \nabla v \; d\Omega = 0
 $$
 
 Since the framework utilizes automatic differentiation for the Jacobian, we assemble these directly into the nonlinear residual vector.
@@ -229,9 +229,7 @@ while current_time < t_end:
     
     # Export frames
     c_sol, mu_sol = V.split(U_n)
-    start_export = time.time()
     exporter.export(c_sol, f"results_cahn_hilliard/cahn_hilliard_{step:04d}.vtu")
-    print(f"-> VTU Export took {time.time() - start_export:.4f}s")
 ```
 
 ![Cahn Result](cahn_result.gif)
