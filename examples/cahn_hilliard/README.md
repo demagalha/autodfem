@@ -44,6 +44,7 @@ $$M \nabla \mu \cdot \mathbf{n} = 0, \qquad \nabla c \cdot \mathbf{n} = 0 \qquad
 To bypass the requirement of $C^1$-continuous elements for a fourth-order PDE, we use a mixed weak formulation. After multiplying by the test functions and integrating the appropriate terms by parts, we find $(c, \mu) \in H^1 \times H^1$ such that for all test functions $(q, v) \in H^1 \times H^1$:
 
 1. **Concentration Equation:**
+
 $$
 \int_\Omega \frac{c - c_{\text{old}}}{\Delta t} q \, d\Omega + \int_\Omega M \nabla \mu_{\text{mid}} \cdot \nabla q \, d\Omega = 0
 $$
@@ -55,6 +56,7 @@ $$\nabla \mu_{\text{mid}} = (1 - \theta) \nabla \mu_{\text{old}} + \theta \nabla
 *(We used a Crank-Nicolson / $\theta$-method approach  for the time-integration of the chemical potential gradient, setting later $\theta = 0.5$)*
 
 2. **Chemical Potential Equation:**
+
 $$
 \int_\Omega \mu v \, d\Omega - \int_\Omega f'(c) v \, d\Omega - \int_\Omega \lambda \nabla c \cdot \nabla v \, d\Omega = 0
 $$
