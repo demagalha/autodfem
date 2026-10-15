@@ -102,14 +102,23 @@ class Assembler:
         return jacobian(elem_residual, u_loc_guess)
 
     def assemble(self, U_current, global_params=None):
-        if global_params is None: 
+        if global_params is None:
             global_params = {}
 
+        field_params_def = {}
+        scalar_params_def = {}
         param_keys = []
+
         for key, val in global_params.items():
-            if isinstance(val, np.ndarray):
-                param_keys.append((key, f'grad_{key}', True)) 
+            if isinstance(val, tuple) and len(val) == 2 and hasattr(val[0], 'get_dofs'):
+                V_field, arr = val
+                field_params_def[key] = (V_field, arr)
+                param_keys.append((key, f'grad_{key}', True))
+            elif isinstance(val, np.ndarray):
+                field_params_def[key] = (self.V, val)
+                param_keys.append((key, f'grad_{key}', True))
             else:
+                scalar_params_def[key] = val
                 param_keys.append((key, None, False))
 
         start_time = time.time()
@@ -132,13 +141,16 @@ class Assembler:
 
             local_params = {}
             if self.expects_state:
-                for key, _, is_field in param_keys:
-                    if is_field:
-                        # We also pre multiply historical fields by signs
-                        local_slice = global_params[key][dof_indices] * dof_signs
-                        local_params[key] = local_slice.reshape((n_nodes_per_elem, self.V.n_components))
-                    else:
-                        local_params[key] = global_params[key]
+                # Slice using the specific FunctionSpace topo for each field
+                for key, (V_field, val_array) in field_params_def.items():
+                    f_dofs = V_field.get_dofs(e)
+                    f_signs = V_field.get_dof_signs(e)
+                    f_n_nodes = len(V_field.cell_dofs[e])
+                    local_slice = val_array[f_dofs] * f_signs
+                    local_params[key] = local_slice.reshape((f_n_nodes, V_field.n_components))
+                    
+                for key, val in scalar_params_def.items():
+                    local_params[key] = val
 
             R_loc, K_loc = self.assemble_element(e, u_loc_guess, local_params, param_keys)
 
@@ -193,7 +205,7 @@ class MixedAssembler:
     
     def assemble_element(self, e, U_global, global_params=None, param_keys=None):
         if global_params is None: global_params = {}
-        if param_keys is None: param_keys = []
+        if param_keys is None: param_keys = {}
 
         field_dofs = []
         field_values = []
@@ -215,8 +227,14 @@ class MixedAssembler:
 
         # Slice the historical parameter fields (like u_old)
         local_params = {}
-        for key, is_field in param_keys:
-            if is_field:
+        for key, ptype in param_keys.items():
+            if ptype == 'single_field':
+                V_field, arr = global_params[key]
+                dofs = V_field.get_dofs(e)
+                signs = V_field.get_dof_signs(e)
+                n_nodes = len(V_field.cell_dofs[e])
+                local_params[key] = (arr[dofs] * signs).reshape((n_nodes, V_field.n_components))
+            elif ptype == 'mixed_field':
                 val_global = global_params[key]
                 chunks = []
                 for i, V in enumerate(self.V.spaces):
@@ -287,22 +305,21 @@ class MixedAssembler:
                 # --- STATE HANDLING --- # This is somewhat very fragile... beware
                 if self.expects_state:
                     gp_state = {}
-                    for key, is_field in param_keys:
-                        if is_field:
+                    for key, ptype in param_keys.items():
+                        if ptype == 'single_field':
+                            N, B_x = space_mappings[0]
+                            u_loc_state = local_params[key]
+                            gp_state[key] = N @ u_loc_state
+                            gp_state[f'grad_{key}'] = B_x @ u_loc_state
+                        elif ptype == 'mixed_field':
                             mapped_state = []
                             for i, V in enumerate(self.V.spaces):
                                 N, B_x = space_mappings[i]
                                 u_loc_state = local_params[key][i]
-
                                 if V.element.mapping_type == "Hdiv":
-                                    u_gp_state = N.T @ u_loc_state
-                                    grad_u_state = B_x @ u_loc_state
+                                    mapped_state.append((N.T @ u_loc_state, B_x @ u_loc_state))
                                 else:
-                                    u_gp_state = N @ u_loc_state
-                                    grad_u_state = B_x @ u_loc_state
-
-                                # Appends a tuple matching the current field map
-                                mapped_state.append((u_gp_state, grad_u_state))
+                                    mapped_state.append((N @ u_loc_state, B_x @ u_loc_state))
                             gp_state[key] = mapped_state
                         else:
                             gp_state[key] = local_params[key]
@@ -337,12 +354,14 @@ class MixedAssembler:
             global_params = {}
 
         # Detect which params are global fields (like U_old) vs scalars (like dt)
-        param_keys = []
+        param_keys = {}
         for key, val in global_params.items():
-            if isinstance(val, np.ndarray) and val.size == self.V.ndofs:
-                param_keys.append((key, True))
+            if isinstance(val, tuple) and len(val) == 2 and hasattr(val[0], 'get_dofs'):
+                param_keys[key] = 'single_field'
+            elif isinstance(val, np.ndarray) and val.size == self.V.ndofs:
+                param_keys[key] = 'mixed_field'
             else:
-                param_keys.append((key, False))
+                param_keys[key] = 'scalar'
 
         ndofs = self.V.ndofs
         R = np.zeros(ndofs)

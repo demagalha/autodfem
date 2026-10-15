@@ -4,6 +4,8 @@ import os
 
 from fem_engine.element import Quad4, Quad9, Quad0
 from fem_engine.mesh import FunctionSpace
+from fem_engine.assembler import Assembler
+from fem_engine.fem_solver import solve_linear
 
 def export_vtu(functionspace, u_vector, filename, field_name="Field", n_vis_pts=None, exact_func=None, show_plot=False):
     """
@@ -507,3 +509,196 @@ def evaluate_field_at_point(mesh, V, U, x_phys):
         return N @ u_loc
 
     return np.nan
+
+def interpolate_to_nodes(V, func):
+    """
+    Interpolates a mathematical function directly at the degrees of freedom.
+    Best for setting initial conditions in nodal H1 spaces (Quad4, Quad9).
+    """
+    if getattr(V.element, "mapping_type", "H1") == "Hdiv":
+        raise ValueError("Nodal interpolation is not supported for H(div) spaces. Use L2 projection instead.")
+
+    U = np.zeros(V.ndofs)
+    geom_element = V.mesh.geom_element
+    ref_coords = V.element.get_ref_coords()
+
+    for e, cell in enumerate(V.mesh.cells):
+        geom_node_indices = cell[1]
+        phys_nodes = V.mesh.points[geom_node_indices]
+        
+        dofs = V.get_dofs(e)
+        
+        for local_idx, xi in enumerate(ref_coords):
+            # 1. Map reference DOF location to physical space
+            N_geom = geom_element.shape_functions(xi)
+            pos = N_geom @ phys_nodes
+            
+            # 2. Evaluate the user function
+            val = func(pos[0], pos[1])
+            val = np.ravel(val)  # Flattens scalar/vector cleanly
+            
+            # 3. Insert into the global vector
+            start = local_idx * V.n_components
+            end = start + V.n_components
+            
+            U[dofs[start:end]] = val
+            
+    return U
+
+def project_l2(V, func, quad_degree=None):
+    """
+    Computes the L2 projection of a continuous function f(x, y) onto the space V.
+    Universal method: works for H1 scalars, H1 vectors, and H(div) fluxes.
+    """
+    if quad_degree is None:
+        quad_degree = 5 if V.mesh.cell_type == "quad9" else 3
+
+    # Define the projection weak form
+    def l2_weak_form(N, B_x, u_gp, grad_u, pos_gp, e):
+        # Evaluate the mathematical function at the Gauss point
+        f_val = np.array(func(pos_gp[0], pos_gp[1]))
+        
+        if getattr(V.element, "mapping_type", "H1") == "Hdiv":
+            # For H(div) spaces: N is (n_dofs, dim), u_gp is (dim,)
+            # The test function dot product is N @ (u_gp - f_val) -> shape (n_dofs,)
+            return N @ (u_gp - f_val)
+        else:
+            # For H1 spaces: N is (n_dofs,)
+            if V.n_components > 1:
+                # Vector H1: Outer product maps to (n_dofs, n_components), then flatten
+                return np.outer(N, u_gp - f_val).flatten()
+            else:
+                # Scalar H1
+                return N * (u_gp - f_val)
+
+    # Initialize the standard assembler
+    assembler = Assembler(V, l2_weak_form, quad_degree=quad_degree)
+    
+    # We evaluate at U = 0.
+    # The AD engine will return R(0) = - \int N * f dx
+    # and the Jacobian K = \int N * N dx (The Mass Matrix)
+    U0 = np.zeros(V.ndofs)
+    R, K = assembler.assemble(U0)
+    
+    # Solve K * U_proj = -R (which is exactly M * U_proj = F)
+    U_proj = solve_linear(K, -R)
+    
+    return U_proj
+
+class CachedVTUExporter:
+    def __init__(self, functionspace, field_name="Field", n_vis_pts=None):
+        self.V = functionspace
+        self.mesh = functionspace.mesh
+        self.field_element = functionspace.element
+        self.field_name = field_name
+        self.is_vector = (functionspace.n_components > 1) or (getattr(self.field_element, "mapping_type", "") == "Hdiv")
+        
+        geom_element = self.mesh.geom_element
+        if self.mesh.cell_type == "quad":
+            vtk_type = pv.CellType.QUAD
+            pts_per_sub_cell = 4
+        elif self.mesh.cell_type == "quad9":
+            vtk_type = pv.CellType.BIQUADRATIC_QUAD
+            pts_per_sub_cell = 9
+        else:
+            raise NotImplementedError(f"Unsupported geometry type: {self.mesh.cell_type}")
+
+        if n_vis_pts is None:
+            self.ref_pts = geom_element.get_ref_coords()
+            sub_cells_topo = [list(range(len(self.ref_pts)))]
+        else:
+            s = np.linspace(-1.0, 1.0, n_vis_pts)
+            X, Y = np.meshgrid(s, s)
+            self.ref_pts = np.column_stack([X.ravel(), Y.ravel()])
+            sub_cells_topo = []
+            for j in range(n_vis_pts - 1):
+                for i in range(n_vis_pts - 1):
+                    n0 = j * n_vis_pts + i
+                    sub_cells_topo.append([n0, n0 + 1, n0 + 1 + n_vis_pts, n0 + n_vis_pts])
+            vtk_type = pv.CellType.QUAD
+            pts_per_sub_cell = 4
+
+        num_macro_cells = len(self.mesh.cells)
+        num_sub_cells = len(sub_cells_topo) * num_macro_cells
+        num_total_pts = len(self.ref_pts) * num_macro_cells
+        
+        points = np.zeros((num_total_pts, 3))
+        vtk_cells = []
+        cell_types = np.full(num_sub_cells, vtk_type, dtype=np.uint8)
+        
+        # --- PRECOMPUTE GEOMETRY ONCE ---
+        cached_N_phys = []
+        pt_idx = 0
+        
+        for e, cell in enumerate(self.mesh.cells):
+            phys_nodes = self.mesh.points[cell[1]]
+            base_pt_idx = pt_idx
+            
+            cell_N_phys = []
+            for xi in self.ref_pts:
+                # Geometry mapping
+                N_geom = geom_element.shape_functions(xi)
+                x_phys = N_geom @ phys_nodes
+                points[pt_idx, :2] = x_phys
+                
+                # Push forward mapping
+                N_ref = self.field_element.shape_functions(xi)
+                dN_geom = geom_element.shape_gradients_reference(xi)
+                J = geom_element.jacobian(phys_nodes, B_ref=dN_geom)
+                detJ = np.linalg.det(J)
+                
+                N_phys = self.field_element.push_forward_values(N_ref, J, detJ)
+                cell_N_phys.append(N_phys)
+                pt_idx += 1
+                
+            cached_N_phys.append(cell_N_phys)
+
+            # Build connectivity
+            for sub_topo in sub_cells_topo:
+                vtk_cells.append(pts_per_sub_cell)
+                vtk_cells.extend([base_pt_idx + n for n in sub_topo])
+
+        # Convert cached data to numpy arrays for instant vectorized evaluation
+        self.N_phys_arr = np.array(cached_N_phys) 
+        self.all_dofs = np.array([self.V.get_dofs(e) for e in range(num_macro_cells)])
+        self.all_signs = np.array([self.V.get_dof_signs(e) for e in range(num_macro_cells)])
+        self.n_nodes_per_elem = len(self.V.cell_dofs[0])
+
+        # Create persistent PyVista grid
+        self.grid = pv.UnstructuredGrid(vtk_cells, cell_types, points)
+        
+        if self.is_vector:
+            self.point_data = np.zeros((num_total_pts, 3))
+            self.grid.point_data[self.field_name] = self.point_data
+            self.grid.set_active_vectors(self.field_name)
+        else:
+            self.point_data = np.zeros(num_total_pts)
+            self.grid.point_data[self.field_name] = self.point_data
+            self.grid.set_active_scalars(self.field_name)
+
+    def export(self, u_vector, filename):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        
+        # 1. Extract all element DOFs simultaneously. Shape: (n_elems, n_nodes, n_components)
+        local_u = (u_vector[self.all_dofs] * self.all_signs).reshape(
+            len(self.mesh.cells), self.n_nodes_per_elem, self.V.n_components
+        )
+        
+        # 2. Vectorized Matrix Multiplication
+        if getattr(self.field_element, "mapping_type", "") == "Hdiv":
+            # N_phys_arr shape: (elems, pts, nodes, dim) | local_u shape: (elems, nodes, components)
+            u_vals = np.einsum('epnd,enc->epd', self.N_phys_arr, local_u)
+        else:
+            # N_phys_arr shape: (elems, pts, nodes) | local_u shape: (elems, nodes, components)
+            u_vals = np.einsum('epn,enc->epc', self.N_phys_arr, local_u)
+            
+        # 3. Flatten back to (total_pts, components) and assign
+        u_vals = u_vals.reshape(-1, u_vals.shape[-1])
+        
+        if self.is_vector:
+            self.point_data[:, :u_vals.shape[1]] = u_vals
+        else:
+            self.point_data[:] = u_vals[:, 0]
+            
+        self.grid.point_data[self.field_name] = self.point_data
+        self.grid.save(filename)
