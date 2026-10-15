@@ -6,7 +6,7 @@ This example solves the **Cahn-Hilliard equation**, which models the process of 
 
 This implementation uses a **coupled mixed formulation**, solving simultaneously for the concentration field $c$ and the chemical potential $\mu$.
 
-**Note: Unlike the most of ther rest of exambles, this will use a JAX AD instead of the custom one. It is way faster specially for time-dependent problems. One must just use jax functions instead of numpy in the weak form definition**
+**Note: Unlike most of other rest of examples, this will use a JAX AD instead of the custom one. It is way faster specially for time-dependent problems. One must just use jax functions instead of numpy in the weak form definition**
 
 ---
 
@@ -14,9 +14,13 @@ This implementation uses a **coupled mixed formulation**, solving simultaneously
 
 The Cahn-Hilliard equation is a fourth-order nonlinear partial differential equation. It is split into two second-order equations for the concentration $c$ and the chemical potential $\mu$:
 
-$$\frac{\partial c}{\partial t} = \nabla \cdot (M \nabla \mu) \qquad \text{in } \Omega$$
+$$
+\frac{\partial c}{\partial t} = \nabla \cdot (M \nabla \mu) \qquad \text{in } \Omega
+$$
 
-$$\mu = f'(c) - \lambda \nabla^2 c \qquad \text{in } \Omega$$
+$$
+\mu = f'(c) - \lambda \nabla^2 c \qquad \text{in } \Omega
+$$
 
 where:
 - $M$ is the mobility.
