@@ -78,7 +78,7 @@ Since the framework uses automatic differentiation for the Jacobian, we assemble
 
 ## Implementation details
 
-The full implementation can be found in [example_cahn.py](./example_cook_hyper.py).
+The full implementation can be found in [example_cahn.py](./example_cahn.py).
 
 We begin with the necessary imports, using the JAX-based `MixedAssembler` for AD compilation from `assembler_jax`:
 
