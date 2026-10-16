@@ -4,7 +4,6 @@ import os
 
 from fem_engine.element import Quad4, Quad9, Quad0
 from fem_engine.mesh import FunctionSpace
-from fem_engine.assembler import Assembler
 from fem_engine.fem_solver import solve_linear
 
 def export_vtu(functionspace, u_vector, filename, field_name="Field", n_vis_pts=None, exact_func=None, show_plot=False):
@@ -545,31 +544,31 @@ def interpolate_to_nodes(V, func):
             
     return U
 
-def project_l2(V, func, quad_degree=None):
+def project_l2(V, func, quad_degree=None, use_jax=False):
     """
     Computes the L2 projection of a continuous function f(x, y) onto the space V.
     Universal method: works for H1 scalars, H1 vectors, and H(div) fluxes.
+    Can route to either the normal or JAX assembler.
     """
     if quad_degree is None:
         quad_degree = 5 if V.mesh.cell_type == "quad9" else 3
 
-    # Define the projection weak form
+    # Load the requested assembler
+    if use_jax:
+        from fem_engine.assembler_jax import Assembler
+        import jax.numpy as xp
+    else:
+        from fem_engine.assembler import Assembler
+        import numpy as xp
+
     def l2_weak_form(N, B_x, u_gp, grad_u, pos_gp, e):
-        # Evaluate the mathematical function at the Gauss point
-        f_val = np.array(func(pos_gp[0], pos_gp[1]))
+        f_val = func(pos_gp[0], pos_gp[1])
         
         if getattr(V.element, "mapping_type", "H1") == "Hdiv":
-            # For H(div) spaces: N is (n_dofs, dim), u_gp is (dim,)
-            # The test function dot product is N @ (u_gp - f_val) -> shape (n_dofs,)
-            return N @ (u_gp - f_val)
+            f_col = xp.array(f_val).reshape(-1, 1)
+            return N @ (u_gp - f_col)
         else:
-            # For H1 spaces: N is (n_dofs,)
-            if V.n_components > 1:
-                # Vector H1: Outer product maps to (n_dofs, n_components), then flatten
-                return np.outer(N, u_gp - f_val).flatten()
-            else:
-                # Scalar H1
-                return N * (u_gp - f_val)
+            return xp.outer(N, u_gp - f_val)
 
     # Initialize the standard assembler
     assembler = Assembler(V, l2_weak_form, quad_degree=quad_degree)

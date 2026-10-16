@@ -55,8 +55,8 @@ Each example contains its own `README.md` explaining the formulation and how to 
 | [Lid Driven Cavity](examples/lid_driven/) | Incompressible flow benchmark (with Taylor-Hood Elements). |
 | [Mixed Poisson](examples/mixed_poisson/) | Mixed formulation using Raviart-Thomas elements. |
 | [Transient Heat](examples/transient_heat/) | Time-dependent heat equation. |
-| [Cook's Membrane (Hyperelasticity)](examples/cook_membrane_hyperelasticity/) | Hyperelastic Cook's membrane benchmark.
-| [Cahn-Hilliard (with JAX)](examples/cahn_hilliard/) | Cahn-Hilliard problem with the JAX implementation instead of the custom AD.
+| [Cook's Membrane (Hyperelasticity)](examples/cook_membrane_hyperelasticity/) | Hyperelastic Cook's membrane benchmark. |
+| [Cahn-Hilliard (with JAX)](examples/cahn_hilliard/) | Cahn-Hilliard problem with the JAX implementation instead of the custom AD. |
 
 ## Using it
 

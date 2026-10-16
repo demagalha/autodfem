@@ -376,54 +376,6 @@ class MixedAssembler:
         print(f"Mixed Assembly took {time.time() - start_time:.3f} seconds")
         return R_global, K_global
 
-'''
-# --- SCALAR ASSEMBLY REMAINS EXACTLY THE SAME ---
-def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
-    # (Leaving identical to original so as not to break postprocessing routines)
-    geom_element = function_space.mesh.geom_element
-    pts, wgts = geom_element.get_volume_quadrature(quad_degree)
-    N_cache = [function_space.element.shape_functions(gp) for gp in pts]
-    dN_cache = [function_space.element.shape_gradients_reference(gp) for gp in pts]
-    value = 0.0
-    for e, cell in enumerate(function_space.mesh.cells):
-        geom_node_indices = cell[1]
-        elem_nodes = function_space.mesh.points[geom_node_indices]
-        u_loc = None
-        if u_sol is not None:
-            dofs = function_space.get_dofs(e)
-            signs = function_space.get_dof_signs(e) 
-            n_nodes = len(function_space.cell_dofs[e])
-            u_loc = (u_sol[dofs] * signs).reshape((n_nodes, function_space.n_components))
-        cell_value = 0.0
-        for k, (gp, w) in enumerate(zip(pts, wgts)):
-            B_ref_geom = geom_element.shape_gradients_reference(gp)
-            J = geom_element.jacobian(elem_nodes, B_ref=B_ref_geom)
-            detJ = np.linalg.det(J)
-            invJ = np.linalg.inv(J)
-            N_geom = geom_element.shape_functions(gp)
-            pos_gp = N_geom @ elem_nodes
-            u_gp, grad_u = None, None
-            if u_loc is not None:
-                N_ref = N_cache[k]
-                dN_ref = dN_cache[k]
-                N = function_space.element.push_forward_values(N_ref, J, detJ)
-                dN = function_space.element.push_forward_derivatives(dN_ref, J, invJ, detJ)
-                if getattr(function_space.element, "mapping_type", "") == "Hdiv":
-                    u_gp = N.T @ u_loc
-                else:
-                    u_gp = N @ u_loc
-                if u_gp.size == 1:
-                    u_gp = u_gp.item()
-                else:
-                    u_gp = u_gp.flatten()
-                grad_u = dN @ u_loc
-            f_val = integrand(u_gp, grad_u, pos_gp, e)
-            cell_value += f_val * detJ * w
-        value += cell_value
-    return value
-'''
-# THESE HERE NEEDS TO BE FIXED FOR SOME ELEM TYPES...
-
 def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
     # Setup quadrature and cache
     geom_element = function_space.mesh.geom_element
@@ -446,6 +398,9 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
     else:
         u_loc_all = jnp.zeros((n_elems, 1, 1)) # Dummy shape
 
+    # Extract mapping type, will default to H1 otherwise
+    mapping_type = getattr(function_space.element, "mapping_type", "H1")
+
     def cell_integral(nodes, u_loc, cell_idx):
         cell_val = 0.0
         for k, (gp, w) in enumerate(zip(pts, wgts)):
@@ -464,8 +419,11 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
                 N = function_space.element.push_forward_values(N_ref, J, detJ)
                 dN = function_space.element.push_forward_derivatives(dN_ref, J, invJ, detJ)
                 
-                # Hdiv check would need to be handled statically outside the JIT compilation
-                u_gp = jnp.dot(N, u_loc) 
+                if mapping_type == "Hdiv":
+                    u_gp = jnp.dot(N.T, u_loc)
+                else:
+                    u_gp = jnp.dot(N, u_loc) 
+
                 grad_u = jnp.dot(dN, u_loc)
                 
             f_val = integrand(u_gp, grad_u, pos_gp, cell_idx)
