@@ -422,13 +422,15 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
         value += cell_value
     return value
 '''
+# THESE HERE NEEDS TO BE FIXED FOR SOME ELEM TYPES...
+
 def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
     # Setup quadrature and cache
     geom_element = function_space.mesh.geom_element
     pts, wgts = geom_element.get_volume_quadrature(quad_degree)
     
     # Precompute all element geometries and shape functions 
-    # (In a real implementation, you might want to cache these at the mesh level)
+    # Might want to cache these at the mesh level later
     cells = function_space.mesh.cells
     points = function_space.mesh.points
     n_elems = len(cells)
