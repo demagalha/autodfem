@@ -82,7 +82,7 @@ As of now, you can use:
 We define the problem through a function:
 
 ```python
-function(N, B_x, u_gp, grad_u, x_gp, e)
+def function(N, B_x, u_gp, grad_u, x_gp, e)
 ```
 
 Where:
@@ -93,6 +93,19 @@ Where:
 - `grad_u`: gradient of u  
 - `x_gp`: physical coordinates (used for RHS, body loads, etc.)  
 - `e`: element index (mostly unused, added for special cases)
+
+For example, in the Poisson case:
+
+```python
+# Define the residual weak form: (grad_v * grad_u) - (v * f)
+def poisson_weak_form(N, B_x, u_gp, grad_u, x_gp, e):
+    f_val = 2 * np.pi**2 * np.sin(np.pi * x_gp[0]) * np.sin(np.pi * x_gp[1])
+    
+    diff_term = B_x.T @ grad_u
+    source_term = -N * f_val
+    
+    return diff_term + source_term
+```
 
 ---
 
