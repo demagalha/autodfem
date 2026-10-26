@@ -138,8 +138,8 @@ def poisson_weak_form(v, grad_v, u, grad_u, x, e):
     # Diffusion term: grad_v * grad_u
     diff_term = grad_v.T @ grad_u
     
-    # Source term: N * f
-    source_term = -N * f_val
+    # Source term: v * f
+    source_term = -v * f_val
     
     return diff_term + source_term
 ```
