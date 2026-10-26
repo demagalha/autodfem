@@ -16,6 +16,10 @@ class DualTensor:
     def __repr__(self):
         return f"DualTensor(shape={self.real.shape}, dual_shape={self.dual.shape})"
 
+    @property
+    def shape(self):
+        return self.real.shape
+
     def __array_function__(self, func, types, args, kwargs):
         """Intercepts standard NumPy functions and redirects them."""
         # np.outer
@@ -88,6 +92,11 @@ class DualTensor:
         new_real = self.real.reshape(shape)
         # The dual dimension (the last one) must remain unchanged
         new_dual = self.dual.reshape(shape + (self.dual.shape[-1],))
+        return DualTensor(new_real, new_dual)
+
+    def squeeze(self, axis=None):
+        new_real = np.squeeze(self.real, axis=axis)
+        new_dual = self.dual.reshape(new_real.shape + (self.dual.shape[-1],))
         return DualTensor(new_real, new_dual)
 
     def flatten(self):

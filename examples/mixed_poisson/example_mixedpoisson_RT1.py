@@ -79,18 +79,14 @@ def run_convergence_study():
 
         # Weak form
         def mixed_poisson_weak(mapped, pos_gp, e):
-
             (N_q, B_q_div, q, div_q) = mapped[0]
             (N_u, B_u, u, grad_u) = mapped[1]
 
             x, y = pos_gp
             f = exact_div(x, y)
 
-            # or
-            #R_q = (N_q @ q).flatten() - B_q_div * u[0]
-            #R_u = N_u * (div_q[0] - f)
-            R_q = N_q @ q - np.outer(B_q_div, u)
-            R_u = np.outer(N_u, div_q - f)
+            R_q = N_q @ q - B_q_div * u
+            R_u = N_u * (div_q - f)
 
             return [R_q, R_u]
 

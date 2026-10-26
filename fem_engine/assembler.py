@@ -5,6 +5,12 @@ import inspect
 
 from fem_engine.dual import jacobian
 
+def _safe_squeeze(x):
+    """Squeezes trailing dimension only if it exists and has size 1."""
+    if hasattr(x, 'shape') and len(x.shape) > 0 and x.shape[-1] == 1:
+        return x.squeeze(axis=-1)
+    return x
+
 class Assembler:
     def __init__(self, function_space, weak_form_integrand, quad_degree=2):
         self.V = function_space
@@ -69,7 +75,7 @@ class Assembler:
             u_loc = u_loc_1d.reshape((n_nodes_per_elem, self.V.n_components))
             
             # Initialize a DualTensor of zeros to accumulate the residual
-            R_loc = u_loc * 0.0 
+            R_loc = u_loc_1d * 0.0 
             
             for (weight, detJ, pos_gp, N, B_x) in mapped_data:
                 
@@ -81,13 +87,23 @@ class Assembler:
                     u_gp = N @ u_loc
                     grad_u = B_x @ u_loc
 
+                # Due to the way basis fun and stuff are defined, this should fix dimentions mismatch for some
+                if self.V.n_components == 1:
+                    u_gp = _safe_squeeze(u_gp)
+                    grad_u = _safe_squeeze(grad_u)
+
                 if self.expects_state:
                     gp_state = {}
                     for key, grad_key, is_field in param_keys:
                         if is_field:
                             val = local_params[key]
-                            gp_state[key] = N @ val
-                            gp_state[grad_key] = B_x @ val 
+                            val_gp = N @ val
+                            grad_val = B_x @ val
+                            if self.V.n_components == 1:
+                                val_gp = _safe_squeeze(val_gp)
+                                grad_val = _safe_squeeze(grad_val)
+                            gp_state[key] = val_gp
+                            gp_state[grad_key] = grad_val 
                         else:
                             gp_state[key] = local_params[key]
                     
@@ -95,9 +111,9 @@ class Assembler:
                 else:
                     integrand = self.weak_form(N, B_x, u_gp, grad_u, pos_gp, e)
 
-                R_loc += integrand * (detJ * weight)
+                R_loc += (integrand * (detJ * weight)).flatten()
                 
-            return R_loc.flatten()
+            return R_loc
 
         return jacobian(elem_residual, u_loc_guess)
 
@@ -147,7 +163,10 @@ class Assembler:
                     f_signs = V_field.get_dof_signs(e)
                     f_n_nodes = len(V_field.cell_dofs[e])
                     local_slice = val_array[f_dofs] * f_signs
-                    local_params[key] = local_slice.reshape((f_n_nodes, V_field.n_components))
+                    val = local_slice.reshape((f_n_nodes, V_field.n_components))
+                    if V_field.n_components == 1:
+                        val = val.squeeze(axis=-1)
+                    local_params[key] = val
                     
                 for key, val in scalar_params_def.items():
                     local_params[key] = val
@@ -300,6 +319,10 @@ class MixedAssembler:
                         u_gp = N @ u_loc
                         grad_u = B_x @ u_loc
 
+                    if V.n_components == 1:
+                        u_gp = _safe_squeeze(u_gp)
+                        grad_u = _safe_squeeze(grad_u)
+
                     mapped.append((N, B_x, u_gp, grad_u))
                     
                 # --- STATE HANDLING --- # This is somewhat very fragile... beware
@@ -309,17 +332,28 @@ class MixedAssembler:
                         if ptype == 'single_field':
                             N, B_x = space_mappings[0]
                             u_loc_state = local_params[key]
-                            gp_state[key] = N @ u_loc_state
-                            gp_state[f'grad_{key}'] = B_x @ u_loc_state
+                            val = N @ u_loc_state
+                            grad_val = B_x @ u_loc_state
+                            if val.shape[-1] == 1:
+                                val = val.squeeze(axis=-1)
+                                grad_val = grad_val.squeeze(axis=-1)
+                            gp_state[key] = val
+                            gp_state[f'grad_{key}'] = grad_val
                         elif ptype == 'mixed_field':
                             mapped_state = []
                             for i, V in enumerate(self.V.spaces):
                                 N, B_x = space_mappings[i]
                                 u_loc_state = local_params[key][i]
                                 if V.element.mapping_type == "Hdiv":
-                                    mapped_state.append((N.T @ u_loc_state, B_x @ u_loc_state))
+                                    val = N.T @ u_loc_state
+                                    grad_val = B_x @ u_loc_state
                                 else:
-                                    mapped_state.append((N @ u_loc_state, B_x @ u_loc_state))
+                                    val = N @ u_loc_state
+                                    grad_val = B_x @ u_loc_state
+                                if V.n_components == 1:
+                                    val = val.squeeze(axis=-1)
+                                    grad_val = grad_val.squeeze(axis=-1)
+                                mapped_state.append((val, grad_val))
                             gp_state[key] = mapped_state
                         else:
                             gp_state[key] = local_params[key]

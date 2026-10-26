@@ -171,8 +171,7 @@ def navier_stokes_weak_form(mapped, gp, e):
     visc = nu * (B_u.T @ grad_u)   # (9,2)
 
     # 2. Pressure gradient
-    # the [0] is mostly due to issues with numpy broadcasting and the Dual class... something to fix in the future
-    p_div_v = B_u.T * p[0]
+    p_div_v = B_u.T * p
 
     # 3. Non-linear Advection term: (u . nabla) u
     # 'u' is (2,), 'grad_u' is (2,2). 
@@ -326,7 +325,7 @@ percent_error = 100.0 * err / (np.abs(ghia) + eps)
 ```
 
 ```
-L2 relative error: 0.5730383580088722 %
+L2 relative error: 0.5730383580088749 %
 ```
 
 ![Comparison result](u_velocity_vertical_line.png)

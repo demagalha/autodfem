@@ -89,11 +89,8 @@ def run_convergence_study():
             x, y = pos_gp
             f = exact_div(x, y)
 
-            R_q = N_q @ q - np.outer(B_q_div, u)
-            R_u = np.outer(N_u, div_q - f)
-            # or
-            #R_q = (N_q @ q).flatten() - B_q_div * u[0]
-            #R_u = N_u * (div_q[0] - f)
+            R_q = N_q @ q - B_q_div * u
+            R_u = N_u * (div_q - f)
 
             return [R_q, R_u]
 

@@ -119,8 +119,7 @@ def poisson_weak_form(N, B_x, u_gp, grad_u, x_gp, e):
     diff_term = B_x.T @ grad_u
     
     # Source term: N * f
-    # so outer product results in shape (4, 1) matching diff_term.
-    source_term = -np.outer(N, f_val)
+    source_term = -N * f_val
     
     return diff_term + source_term
 ```
@@ -139,9 +138,8 @@ def poisson_weak_form(v, grad_v, u, grad_u, x, e):
     # Diffusion term: grad_v * grad_u
     diff_term = grad_v.T @ grad_u
     
-    # Source term: v * f
-    # so outer product results in shape (4, 1) matching diff_term.
-    source_term = -np.outer(N, f_val)
+    # Source term: N * f
+    source_term = -N * f_val
     
     return diff_term + source_term
 ```

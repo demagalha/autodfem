@@ -238,7 +238,7 @@ def helmholtz_weak(mapped, pos_gp, e):
     # lap(pr) + k^2 pr = 0
 
     stiffness_r = B_r.T @ grad_pr
-    mass_r  = -np.outer(N_r, k**2 * p_r)
+    mass_r  = -N_r * (k**2 * p_r)
 
     R_r = stiffness_r + mass_r
 
@@ -246,9 +246,9 @@ def helmholtz_weak(mapped, pos_gp, e):
     # lap(pi) + k^2 pi = -omega * rho * Q
 
     stiffness_i = B_i.T @ grad_pi
-    mass_i  = -np.outer(N_i, k**2 * p_i)
+    mass_i  = -N_i * (k**2 * p_i)
 
-    source = -np.outer(N_i, omega * rho0 * q)
+    source = -N_i * (omega * rho0 * q)
 
     R_i = stiffness_i + mass_i + source
 

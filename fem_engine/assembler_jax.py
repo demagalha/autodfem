@@ -7,6 +7,12 @@ import jax
 import jax.numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
+def _safe_squeeze(x):
+    """Squeezes trailing dimension only if it exists and has size 1."""
+    if hasattr(x, 'shape') and len(x.shape) > 0 and x.shape[-1] == 1:
+        return jnp.squeeze(x, axis=-1)
+    return x
+
 class Assembler:
     def __init__(self, function_space, weak_form_integrand, quad_degree=2):
         self.V = function_space
@@ -89,11 +95,20 @@ class Assembler:
                     u_gp = jnp.dot(N, u_loc)
                     grad_u = jnp.dot(B_x, u_loc)
 
+                if n_components == 1:
+                    u_gp = _safe_squeeze(u_gp)
+                    grad_u = _safe_squeeze(grad_u)
+
                 if self.expects_state:
                     gp_state = {}
                     for key, val in field_params.items():
-                        gp_state[key] = jnp.dot(N, val)
-                        gp_state[f'grad_{key}'] = jnp.dot(B_x, val)
+                        val_gp = jnp.dot(N, val)
+                        grad_val = jnp.dot(B_x, val)
+                        if n_components == 1:
+                            val_gp = _safe_squeeze(val_gp)
+                            grad_val = _safe_squeeze(grad_val)
+                        gp_state[key] = val_gp
+                        gp_state[f'grad_{key}'] = grad_val
                     for key, val in scalar_params.items():
                         gp_state[key] = val
                     integrand = self.weak_form(N, B_x, u_gp, grad_u, pos_gp, 0, gp_state)
@@ -284,14 +299,21 @@ class MixedAssembler:
                     else:
                         u_gp = jnp.dot(N, u_loc)
                         grad_u = jnp.dot(B_x, u_loc)
+
+                    if n_components_list[i] == 1:
+                        u_gp = _safe_squeeze(u_gp)
+                        grad_u = _safe_squeeze(grad_u)
+
                     mapped.append((N, B_x, u_gp, grad_u))
                 
                 if self.expects_state:
                     gp_state = {}
                     for key, val in single_field_params.items():
                         N_0, B_x_0 = N_spaces[0][k], B_x_spaces[0][k]
-                        gp_state[key] = jnp.dot(N_0, val)
-                        gp_state[f'grad_{key}'] = jnp.dot(B_x_0, val)
+                        val_gp = _safe_squeeze(jnp.dot(N_0, val))
+                        grad_val = _safe_squeeze(jnp.dot(B_x_0, val))
+                        gp_state[key] = val_gp
+                        gp_state[f'grad_{key}'] = grad_val
 
                     for key, f_split in fields_split.items():
                         mapped_state = []
@@ -303,6 +325,9 @@ class MixedAssembler:
                             else:
                                 u_gp_state = jnp.dot(N, f_split[i])
                                 grad_u_state = jnp.dot(B_x, f_split[i])
+                            if n_components_list[i] == 1:
+                                u_gp_state = _safe_squeeze(u_gp_state)
+                                grad_u_state = _safe_squeeze(grad_u_state)
                             mapped_state.append((u_gp_state, grad_u_state))
                         gp_state[key] = mapped_state
                         

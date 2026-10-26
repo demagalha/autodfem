@@ -38,31 +38,22 @@ def cahn_hilliard_weak_form(mapped, pos_gp, e, state):
     lmbda_state = state['lmbda']
     M_state = state['M']
 
-    # Flatten arrays to cleanly avoid JAX/NumPy (N,) + (N, 1) broadcasting bugs
-    c_val = c[0]
-    mu_val = mu[0]
-    c_old_val = c_old[0]
-    
-    grad_c = grad_c.flatten()
-    grad_mu = grad_mu.flatten()
-    grad_mu_old = grad_mu_old.flatten()
-
     # Theta-method (Crank-Nicolson) for the chemical potential gradient
     grad_mu_mid = (1.0 - theta_state) * grad_mu_old + theta_state * grad_mu
     
     # 1. First Equation: Concentration
     # R_c = \int (c - c_old)/dt * q dx + \int M * grad_mu_mid . grad_q dx
-    transient_c = N_c * (c_val - c_old_val) / dt_state
+    transient_c = N_c * (c - c_old) / dt_state
     diffusion_c = M_state * jnp.dot(B_c.T, grad_mu_mid)
     R_c = transient_c + diffusion_c
 
     # 2. Second Equation: Chemical Potential
     # f(c) = 100 * c^2 * (1-c)^2
     # df/dc = 100 * (2c(1-c)^2 - 2c^2(1-c))
-    dfdc = 100.0 * (2.0 * c_val * (1.0 - c_val)**2 - 2.0 * c_val**2 * (1.0 - c_val))
+    dfdc = 100.0 * (2.0 * c * (1.0 - c)**2 - 2.0 * c**2 * (1.0 - c))
     
     # R_mu = \int \mu * v dx - \int df/dc * v dx - \int \lambda * grad_c . grad_v dx
-    term1_mu = N_mu * mu_val
+    term1_mu = N_mu * mu
     term2_mu = -N_mu * dfdc
     term3_mu = -lmbda_state * jnp.dot(B_mu.T, grad_c)
     R_mu = term1_mu + term2_mu + term3_mu

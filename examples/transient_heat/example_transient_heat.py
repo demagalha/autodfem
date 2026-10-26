@@ -24,7 +24,7 @@ def transient_heat_weak_form(N, B_x, u, grad_u, x, e, state):
     
     # 1. Rate of Change (Mass Matrix)
     # rho_c * (u - u_old) / dt
-    transient_term = rho_c * np.outer(N, (u - u_old) / dt)
+    transient_term = rho_c * N * ((u - u_old) / dt)
     
     # 2. Heat Flux (Stiffness Matrix)
     flux_now = k_diff * (B_x.T @ grad_u)
@@ -34,7 +34,7 @@ def transient_heat_weak_form(N, B_x, u, grad_u, x, e, state):
     diffusion_term = theta * flux_now + (1.0 - theta) * flux_old
     
     # 3. Source term (assuming f = 0 for this example)
-    # If we had a heat source, we would add: -np.outer(N, [source_val])
+    # If we had a heat source, we would add: -N * source_val
     
     return transient_term + diffusion_term
 
