@@ -423,13 +423,31 @@ class MixedAssembler:
 
         return R, K
     
-def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
+def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2, global_params=None):
     """
     Universally integrates a scalar value over the mesh.
     If u_sol is provided, it pushes forward the FE field and passes it to the integrand.
+    global_params will pass secondary fields (state variables) to the integrands
     """
+
+    if global_params is None:
+        global_params = {}
+
+    sig = inspect.signature(integrand)
+    expects_state = 'state' in sig.parameters
+
+    field_params_def = {}
+    scalar_params_def = {}
+    if expects_state:
+        for key, val in global_params.items():
+            if isinstance(val, tuple) and len(val) == 2 and hasattr(val[0], 'get_dofs'):
+                field_params_def[key] = val
+            elif isinstance(val, np.ndarray):
+                field_params_def[key] = (function_space, val)
+            else:
+                scalar_params_def[key] = val
+
     geom_element = function_space.mesh.geom_element
-        
     pts, wgts = geom_element.get_volume_quadrature(quad_degree)
     
     # Cache reference shape functions
@@ -450,6 +468,18 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
             signs = function_space.get_dof_signs(e) # CRITICAL for RT fluxes!
             n_nodes = len(function_space.cell_dofs[e]) ## i aded this last
             u_loc = (u_sol[dofs] * signs).reshape((n_nodes, function_space.n_components))
+
+        local_params = {}
+        if expects_state:
+            for key, (V_field, val_array) in field_params_def.items():
+                f_dofs = V_field.get_dofs(e)
+                f_signs = V_field.get_dof_signs(e)
+                f_n_nodes = len(V_field.cell_dofs[e])
+                val = (val_array[f_dofs] * f_signs).reshape((f_n_nodes, V_field.n_components))
+                local_params[key] = _safe_squeeze(val) if V_field.n_components == 1 else val
+
+            for key, val in scalar_params_def.items():
+                local_params[key] = val
             
         cell_value = 0.0
         
@@ -463,7 +493,7 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
             N_geom = geom_element.shape_functions(gp)
             pos_gp = N_geom @ elem_nodes
             
-            # --- Field Mapping ---
+            # Field Mapping
             u_gp = None
             grad_u = None
             if u_loc is not None:
@@ -479,16 +509,36 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
                 else:
                     u_gp = N @ u_loc    # Scalar evaluation
 
-                #fixing dimensions, if I have time I will clean a lot of numpy dimension mismatch... but now now
-                if u_gp.size == 1:
-                    u_gp = u_gp.item()
-                else:
-                    u_gp = u_gp.flatten()
+                if function_space.n_components == 1:
+                    u_gp = _safe_squeeze(u_gp)
 
                 grad_u = dN @ u_loc
-                    
-            # --- Evaluate Integrand ---
-            f_val = integrand(u_gp, grad_u, pos_gp, e)
+
+                if function_space.n_components == 1:
+                    grad_u = _safe_squeeze(grad_u)
+
+            if expects_state:
+                gp_state = {}
+                for key, val in local_params.items():
+                    if key in field_params_def:
+                        V_field = field_params_def[key][0]
+                        N_state_ref = V_field.element.shape_functions(gp)
+                        N_state = V_field.element.push_forward_values(N_state_ref, J, detJ)
+                        
+                        if getattr(V_field.element, "mapping_type", "") == "Hdiv":
+                            val_gp = N_state.T @ val
+                        else:
+                            val_gp = N_state @ val
+                            
+                        if V_field.n_components == 1:
+                            val_gp = _safe_squeeze(val_gp)
+                        gp_state[key] = val_gp
+                    else:
+                        gp_state[key] = val
+
+                f_val = integrand(u_gp, grad_u, pos_gp, e, gp_state)
+            else:
+                f_val = integrand(u_gp, grad_u, pos_gp, e)
             
             cell_value += f_val * detJ * w
              

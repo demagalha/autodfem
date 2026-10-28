@@ -2,7 +2,7 @@
 
 A little FEM framework I've built for learning mostly.
 
-As I was studying on how automatic differentiation works, I came across the way to do it with [Dual Numbers](https://en.wikipedia.org/wiki/Dual_number)... And so I tried to come up with something to apply it... Why not the Jacobian in Newton's Method. And so I began writing it from what I knew already (and didn't).
+As I was studying on how automatic differentiation works, I came across the way to do it with [Dual Numbers](https://en.wikipedia.org/wiki/Dual_number)... And so I tried to come up with something to apply it... Why not the Jacobian in Newton's Method? And so I began writing it from what I knew already (and didn't).
 
 
 ## Disclaimer
@@ -17,7 +17,7 @@ AD is a big help because you don't have to define the tangent stiffness matrix a
 
 ## Scope
 
-For now, it only supports **quadrilaterals** (although adding simplex should not be too much of an issue).
+For now, it only supports **quadrilaterals** (although adding simplexes should not be too much of an issue).
 
 
 ## Boundary conditions & assumptions

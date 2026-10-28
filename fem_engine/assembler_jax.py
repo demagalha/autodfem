@@ -401,7 +401,12 @@ class MixedAssembler:
         print(f"Mixed Assembly took {time.time() - start_time:.3f} seconds")
         return R_global, K_global
 
-def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
+def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2, global_params=None):
+    if global_params is None: global_params = {}
+
+    sig = inspect.signature(integrand)
+    expects_state = 'state' in sig.parameters
+
     # Setup quadrature and cache
     geom_element = function_space.mesh.geom_element
     pts, wgts = geom_element.get_volume_quadrature(quad_degree)
@@ -426,7 +431,26 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
     # Extract mapping type, will default to H1 otherwise
     mapping_type = getattr(function_space.element, "mapping_type", "H1")
 
-    def cell_integral(nodes, u_loc, cell_idx):
+    field_params, scalar_params = {}, {}
+    if expects_state:
+        for key, val in global_params.items():
+            if isinstance(val, tuple) and len(val) == 2 and hasattr(val[0], 'get_dofs'):
+                V_field, arr = val
+                f_dofs = np.array([V_field.get_dofs(e) for e in range(n_elems)])
+                f_signs = np.array([V_field.get_dof_signs(e) for e in range(n_elems)])
+                f_n_nodes = len(V_field.cell_dofs[0])
+                sliced = arr[f_dofs] * f_signs
+                field_params[key] = sliced.reshape((n_elems, f_n_nodes, V_field.n_components))
+            elif isinstance(val, np.ndarray):
+                dofs_all_f = np.array([function_space.get_dofs(e) for e in range(n_elems)])
+                signs_all_f = np.array([function_space.get_dof_signs(e) for e in range(n_elems)])
+                n_nodes = len(function_space.cell_dofs[0])
+                sliced = val[dofs_all_f] * signs_all_f
+                field_params[key] = sliced.reshape((n_elems, n_nodes, function_space.n_components))
+            else:
+                scalar_params[key] = val
+
+    def cell_integral(nodes, u_loc, cell_idx, field_params, scalar_params):
         cell_val = 0.0
         for k, (gp, w) in enumerate(zip(pts, wgts)):
             B_ref_geom = geom_element.shape_gradients_reference(gp)
@@ -436,12 +460,14 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
             
             N_geom = geom_element.shape_functions(gp)
             pos_gp = jnp.dot(N_geom, nodes)
+
+            # Calculate shape functions unconditionally so state mapping can use them
+            N_ref = function_space.element.shape_functions(gp)
+            dN_ref = function_space.element.shape_gradients_reference(gp)
+            N = function_space.element.push_forward_values(N_ref, J, detJ)
             
             u_gp, grad_u = None, None
             if u_sol is not None:
-                N_ref = function_space.element.shape_functions(gp)
-                dN_ref = function_space.element.shape_gradients_reference(gp)
-                N = function_space.element.push_forward_values(N_ref, J, detJ)
                 dN = function_space.element.push_forward_derivatives(dN_ref, J, invJ, detJ)
                 
                 if mapping_type == "Hdiv":
@@ -450,15 +476,33 @@ def assemble_scalar(function_space, integrand, u_sol=None, quad_degree=2):
                     u_gp = jnp.dot(N, u_loc) 
 
                 grad_u = jnp.dot(dN, u_loc)
-                
-            f_val = integrand(u_gp, grad_u, pos_gp, cell_idx)
+
+                if function_space.n_components == 1:
+                    u_gp = _safe_squeeze(u_gp)
+                    grad_u = _safe_squeeze(grad_u)
+
+            if expects_state:
+                gp_state = {}
+                for key, val in field_params.items():
+                    val_gp = jnp.dot(N, val)
+                    val_gp = _safe_squeeze(val_gp)
+                    gp_state[key] = val_gp
+                for key, val in scalar_params.items():
+                    gp_state[key] = val
+
+                f_val = integrand(u_gp, grad_u, pos_gp, cell_idx, gp_state)
+            else:
+                f_val = integrand(u_gp, grad_u, pos_gp, cell_idx)
+
             cell_val += f_val * detJ * w
         return cell_val
 
     # Vectorize across all elements
     cell_indices = jnp.arange(n_elems)
-    vmap_integral = jax.vmap(cell_integral, in_axes=(0, 0, 0))
+    field_axes = {k: 0 for k in field_params.keys()}
+    scalar_axes = {k: None for k in scalar_params.keys()}
+    vmap_integral = jax.vmap(cell_integral, in_axes=(0, 0, 0, field_axes, scalar_axes))
     
     # Calculate and sum all element contributions
-    all_cell_vals = vmap_integral(elem_nodes, u_loc_all, cell_indices)
+    all_cell_vals = vmap_integral(elem_nodes, u_loc_all, cell_indices, field_params, scalar_params)
     return jnp.sum(all_cell_vals)
