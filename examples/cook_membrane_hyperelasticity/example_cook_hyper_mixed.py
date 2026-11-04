@@ -43,7 +43,7 @@ def mixed_spp1748_hyperelasticity(mapped, pos_gp, e):
     FinvT = F.inv().T
     
     # Extract the scalar pressure from the P0 space
-    p = p_gp[0]
+    p = p_gp
     
     # 3. First Piola-Kirchhoff Stress (Using independent 'p')
     # P = mu * F + (p - mu) * F^-T
@@ -83,7 +83,7 @@ def compute_true_spp1748_mixed_stress(u_gp, grad_u, p_gp, grad_p):
     J = np.linalg.det(F)
     
     # Extract the scalar pressure from the P0 space evaluation
-    p = p_gp[0]
+    p = p_gp
     
     # Compute the Left Cauchy-Green tensor: b = F * F^T
     b = F @ F.T 
